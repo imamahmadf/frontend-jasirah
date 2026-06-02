@@ -57,6 +57,7 @@ import Logo from "../../assets/logo.png";
 import { HiOutlineUsers } from "react-icons/hi2";
 import { io } from "socket.io-client";
 import { useColorModeValues } from "../../Style/colorModeValues";
+import LogoUtama from "../../assets/logo JDB.png";
 
 // Data menu untuk mapping
 const menuData = [
@@ -87,8 +88,20 @@ const menuData = [
     pathPrefix: "/aset",
     items: [
       { label: "Daftar Persediaan", path: "/aset/daftar-persediaan" },
+      { label: "Tracking Persediaan", path: "/aset/tracking-persediaan" },
+      { label: "Mutasi Persediaan", path: "/aset/mutasi-persediaan" },
       { label: "Laporan Persediaan", path: "/aset/laporan-persediaan" },
       { label: "Surat Pesanan", path: "/aset/surat-pesanan" },
+    ],
+  },
+
+  {
+    title: "Pengeluaran",
+    icon: BsCart4,
+    pathPrefix: "/pengeluaran",
+    items: [
+      { label: "Daftar Pengeluaran", path: "/pengeluaran/daftar-pengeluaran" },
+      { label: "Dashboard Pengeluaran", path: "/pengeluaran/dashboard" },
     ],
   },
 
@@ -143,7 +156,7 @@ function NavbarAset() {
     // Validasi: Pastikan environment variable sudah diset (penting untuk produksi)
     if (!socketUrl) {
       console.error(
-        "⚠️ VITE_REACT_APP_API_BASE_URL tidak diset! Socket.io tidak dapat terhubung."
+        "⚠️ VITE_REACT_APP_API_BASE_URL tidak diset! Socket.io tidak dapat terhubung.",
       );
       return; // Jangan inisialisasi socket jika URL tidak ada
     }
@@ -151,7 +164,7 @@ function NavbarAset() {
     // Peringatan jika masih menggunakan localhost di produksi
     if (socketUrl.includes("localhost") && import.meta.env.PROD) {
       console.warn(
-        "⚠️ PERINGATAN: Menggunakan localhost di produksi! Pastikan environment variable sudah diset dengan benar."
+        "⚠️ PERINGATAN: Menggunakan localhost di produksi! Pastikan environment variable sudah diset dengan benar.",
       );
     }
 
@@ -409,7 +422,7 @@ function NavbarAset() {
             >
               {/* Logo dan Brand */}
               <Flex gap={3} alignItems="center" flexShrink={0}>
-                <Box
+                {/* <Box
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
@@ -417,9 +430,8 @@ function NavbarAset() {
                   h="32px"
                 >
                   <Image height="100%" src={LogoAset} alt="Logo Pena" />
-                </Box>
+                </Box> */}
                 <Box
-                  w="48px"
                   h="48px"
                   borderRadius="md"
                   display="flex"
@@ -428,9 +440,13 @@ function NavbarAset() {
                   flexShrink={0}
                   p={2}
                 >
-                  <Image height="100%" src={Logo} alt="Logo Dinas Kesehatan" />
+                  <Image
+                    height="100%"
+                    src={LogoUtama}
+                    alt="Logo Dinas Kesehatan"
+                  />
                 </Box>
-                <Box display={{ base: "none", sm: "block" }}>
+                {/* <Box display={{ base: "none", sm: "block" }}>
                   <Text
                     color="gray.800"
                     fontSize={{ base: "16px", md: "18px" }}
@@ -448,7 +464,7 @@ function NavbarAset() {
                   >
                     Kabupaten Paser
                   </Text>
-                </Box>
+                </Box> */}
               </Flex>
             </Flex>
 
@@ -468,7 +484,13 @@ function NavbarAset() {
             </Box>
 
             {/* Right Section: User Menu (Desktop) dan Hamburger (Mobile) */}
-            <HStack spacing={3} flexShrink={0} position="relative" zIndex={1} ml="auto">
+            <HStack
+              spacing={3}
+              flexShrink={0}
+              position="relative"
+              zIndex={1}
+              ml="auto"
+            >
               {/* Color Mode Toggle - Hidden on mobile */}
               <IconButton
                 display={{ base: "none", lg: "flex" }}
@@ -950,7 +972,7 @@ function NavbarAset() {
                       ? index.length > 0
                         ? index[0]
                         : -1
-                      : index
+                      : index,
                   );
                 }}
               >

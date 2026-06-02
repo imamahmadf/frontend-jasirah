@@ -117,6 +117,12 @@ function DetailLaporan(props) {
   const [dataSatuan, setDataSatuan] = useState(null);
 
   const [satuanPersediaanId, setSatuanPersediaanId] = useState(0);
+  const [unitKerjaId, setUnitKerjaId] = useState(null);
+  const [filterUnitKerjaId, setFilterUnitKerjaId] = useState(null);
+  const [dataUnitKerja, setDataUnitKerja] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(Foto);
+  const [previewFotoUrl, setPreviewFotoUrl] = useState(null);
 
   const user = useSelector(userRedux);
   const role = useSelector(selectRole);
@@ -124,6 +130,11 @@ function DetailLaporan(props) {
     isOpen: isTambahOpen,
     onOpen: onTambahOpen,
     onClose: onTambahClose,
+  } = useDisclosure();
+  const {
+    isOpen: isFotoOpen,
+    onOpen: onFotoOpen,
+    onClose: onFotoClose,
   } = useDisclosure();
   const handleSubmitChange = (field, val) => {
     console.log(field, val);
@@ -141,15 +152,113 @@ function DetailLaporan(props) {
       setNomorPesanan(val);
     }
   };
-  async function fetchPersediaanMasuk() {
+
+  const handleFile = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size / 1024 > 2048) {
+      toast({
+        title: "Error!",
+        description: "Ukuran file maksimal 2MB",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const resetForm = () => {
+    setSpesifikasi("");
+    setJumlah(0);
+    setHarga(0);
+    setTanggal("");
+    setKeterangan("");
+    setPersediaanId(0);
+    setNomorPesanan(0);
+    setSumberDanaId(null);
+    setSuratPesananId(null);
+    setSatuanPersediaanId(0);
+    setUnitKerjaId(null);
+    setSelectedFile(null);
+    setPreviewUrl(Foto);
+  };
+
+  async function fetchUnitKerja() {
     await axios
       .get(
-        `${
-          import.meta.env.VITE_REACT_APP_API_BASE_URL
-        }/laporan-persediaan/get/detail/${props.match.params.id}?unitKerjaId=${
-          user[0]?.unitKerja_profile?.id
-        }`
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/admin/get/unit-kerja`
       )
+      .then((res) => {
+        setDataUnitKerja(res.data.result);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }
+
+  const FILTER_ALL = "all";
+  const apiBaseUrl = import.meta.env.VITE_REACT_APP_API_BASE_URL;
+
+  const getFotoUrl = (foto) => {
+    if (!foto) return null;
+    if (foto.startsWith("http")) return foto;
+    return `${apiBaseUrl}${foto.startsWith("/") ? foto : `/${foto}`}`;
+  };
+
+  const renderFoto = (foto, size = "50px") => {
+    const src = getFotoUrl(foto);
+    if (!src) {
+      return (
+        <Image
+          src={Foto}
+          alt="no foto"
+          boxSize={size}
+          objectFit="cover"
+          borderRadius="md"
+          opacity={0.5}
+        />
+      );
+    }
+
+    return (
+      <Image
+        src={src}
+        alt="foto persediaan"
+        boxSize={size}
+        objectFit="cover"
+        borderRadius="md"
+        cursor="pointer"
+        onClick={() => {
+          setPreviewFotoUrl(src);
+          onFotoOpen();
+        }}
+      />
+    );
+  };
+
+  const getStokMasuks = () => {
+    if (!DataPersediaan?.length) return [];
+    if (filterUnitKerjaId === FILTER_ALL) {
+      return DataPersediaan.flatMap((item) => item?.stokMasuks || []);
+    }
+    return DataPersediaan[0]?.stokMasuks || [];
+  };
+
+  async function fetchPersediaanMasuk(unitKerjaIdParam) {
+    const id = unitKerjaIdParam ?? filterUnitKerjaId;
+    if (!id) return;
+
+    const baseUrl = `${
+      import.meta.env.VITE_REACT_APP_API_BASE_URL
+    }/laporan-persediaan/get/detail/${props.match.params.id}`;
+    const url =
+      id === FILTER_ALL ? baseUrl : `${baseUrl}?unitKerjaId=${id}`;
+
+    await axios
+      .get(url)
       .then((res) => {
         setDataPersediaan(res.data.result);
         setDataSumberDana(res.data.resultSumberDana);
@@ -163,34 +272,46 @@ function DetailLaporan(props) {
       });
   }
   const tambahPersediaan = () => {
+    if (!unitKerjaId) {
+      toast({
+        title: "Error!",
+        description: "Unit kerja harus dipilih",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("persediaanId", persediaanId);
+    formData.append("spesifikasi", spesifikasi);
+    formData.append("jumlah", jumlah);
+    formData.append("harga", harga);
+    formData.append("tanggal", tanggal);
+    formData.append("keterangan", keterangan);
+    formData.append("unitKerjaId", unitKerjaId);
+    formData.append("laporanPersediaanId", props.match.params.id);
+    if (suratPesananId) formData.append("suratPesananId", suratPesananId);
+    if (nomorPesanan) formData.append("nomorPesanan", nomorPesanan);
+    if (sumberDanaId) formData.append("sumberDanaId", sumberDanaId);
+    if (satuanPersediaanId) formData.append("satuanPersediaanId", satuanPersediaanId);
+    if (selectedFile) formData.append("pic", selectedFile);
+
     axios
       .post(
         `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/persediaan/post/masuk`,
-        {
-          persediaanId,
-          spesifikasi,
-          jumlah,
-          harga,
-          tanggal,
-          keterangan,
-          unitKerjaId: user[0]?.unitKerja_profile?.id,
-          laporanPersediaanId: props.match.params.id,
-          suratPesananId,
-          nomorPesanan,
-          sumberDanaId,
-          satuanPersediaanId,
-        }
+        formData
       )
       .then((res) => {
-        console.log(res.status, res.data, "tessss");
         toast({
           title: "Berhasil!",
-          description: "Pengajuan berhasil dikirim.",
+          description: "Stok masuk berhasil disimpan.",
           status: "success",
           duration: 5000,
           isClosable: true,
         });
-        // fetchDataPersediaan();
+        resetForm();
         onTambahClose();
         fetchPersediaanMasuk();
       })
@@ -208,8 +329,26 @@ function DetailLaporan(props) {
   };
 
   useEffect(() => {
-    fetchPersediaanMasuk();
-  }, [page]);
+    fetchUnitKerja();
+    const defaultUnitKerjaId = user[0]?.unitKerja_profile?.id;
+    if (defaultUnitKerjaId) {
+      setFilterUnitKerjaId(defaultUnitKerjaId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (filterUnitKerjaId) {
+      fetchPersediaanMasuk(filterUnitKerjaId);
+    }
+  }, [page, filterUnitKerjaId]);
+
+  const unitKerjaFilterOptions = [
+    { value: FILTER_ALL, label: "Semua Unit Kerja" },
+    ...(dataUnitKerja?.map((val) => ({
+      value: val.id,
+      label: val.unitKerja,
+    })) || []),
+  ];
   return (
     <>
       <LayoutAset>
@@ -226,10 +365,49 @@ function DetailLaporan(props) {
             borderRadius={"5px"}
             bg={colorMode === "dark" ? "gray.800" : "white"}
           >
-            <HStack gap={5} mb={"30px"}>
+            <HStack gap={5} mb={"30px"} align="flex-end">
               <Button onClick={onTambahOpen} variant={"primary"} px={"50px"}>
                 Tambah +
               </Button>
+
+              <FormControl maxW="320px">
+                <FormLabel fontSize="sm">Filter Unit Kerja</FormLabel>
+                <Select2
+                  options={unitKerjaFilterOptions}
+                  placeholder="Pilih unit kerja"
+                  value={
+                    filterUnitKerjaId
+                      ? unitKerjaFilterOptions.find(
+                          (opt) => opt.value === filterUnitKerjaId
+                        ) || null
+                      : null
+                  }
+                  onChange={(selectedOption) => {
+                    setFilterUnitKerjaId(selectedOption?.value || null);
+                  }}
+                  components={{
+                    DropdownIndicator: () => null,
+                    IndicatorSeparator: () => null,
+                  }}
+                  chakraStyles={{
+                    container: (provided) => ({
+                      ...provided,
+                      borderRadius: "6px",
+                    }),
+                    control: (provided) => ({
+                      ...provided,
+                      backgroundColor: "terang",
+                      border: "0px",
+                      minHeight: "40px",
+                    }),
+                    option: (provided, state) => ({
+                      ...provided,
+                      bg: state.isFocused ? "aset" : "white",
+                      color: state.isFocused ? "white" : "black",
+                    }),
+                  }}
+                />
+              </FormControl>
 
               <Spacer />
             </HStack>
@@ -239,6 +417,7 @@ function DetailLaporan(props) {
                   <Th>No.</Th>
                   <Th>Nomor Surat</Th>
                   <Th>tanggal</Th>
+                  <Th>Unit Kerja</Th>
                   <Th>Sumber Dana</Th>
                   <Th>Kode barang</Th>
                   <Th maxWidth={"20px"}>Nama barang</Th> <Th>NUSP</Th>
@@ -247,10 +426,11 @@ function DetailLaporan(props) {
                   <Th>Satuan</Th>
                   <Th>harga satuan</Th>
                   <Th>Total</Th>
+                  <Th>Foto</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {DataPersediaan[0]?.stokMasuks.map((item, index) => (
+                {getStokMasuks().map((item, index) => (
                   <Tr key={item.id}>
                     {" "}
                     <Td>{index + 1}</Td>{" "}
@@ -269,6 +449,13 @@ function DetailLaporan(props) {
                             year: "numeric",
                           })
                         : "-"}
+                    </Td>
+                    <Td>
+                      {item?.daftarUnitKerja?.unitKerja ||
+                        dataUnitKerja?.find(
+                          (val) => val.id === item?.unitKerjaId
+                        )?.unitKerja ||
+                        "-"}
                     </Td>
                     <Td>{item?.sumberDana.sumber}</Td>
                     <Td>
@@ -290,17 +477,16 @@ function DetailLaporan(props) {
                       {Number(item?.hargaSatuan).toLocaleString("id-ID")}
                     </Td>
                     <Td>
-                      {" "}
                       Rp
                       {Number(item?.jumlah * item?.hargaSatuan).toLocaleString(
                         "id-ID"
-                      )}{" "}
+                      )}
                     </Td>
+                    <Td>{renderFoto(item?.foto)}</Td>
                   </Tr>
                 ))}
               </Tbody>
             </Table>
-            xxxxxxxxxxxxxxxxxxxxxxxxxxxxa
           </Box>
         </Container>
 
@@ -322,6 +508,42 @@ function DetailLaporan(props) {
                 </HStack>
 
                 <SimpleGrid columns={2} spacing={10} p={"30px"}>
+                  <FormControl my={"30px"}>
+                    <FormLabel fontSize={"24px"}>Unit Kerja</FormLabel>
+                    <Select2
+                      options={dataUnitKerja?.map((val) => ({
+                        value: val.id,
+                        label: val.unitKerja,
+                      }))}
+                      placeholder="Pilih unit kerja"
+                      onChange={(selectedOption) => {
+                        setUnitKerjaId(selectedOption.value);
+                      }}
+                      components={{
+                        DropdownIndicator: () => null,
+                        IndicatorSeparator: () => null,
+                      }}
+                      chakraStyles={{
+                        container: (provided) => ({
+                          ...provided,
+                          borderRadius: "6px",
+                        }),
+                        control: (provided) => ({
+                          ...provided,
+                          backgroundColor: "terang",
+                          border: "0px",
+                          height: "60px",
+                          _hover: { borderColor: "yellow.700" },
+                          minHeight: "40px",
+                        }),
+                        option: (provided, state) => ({
+                          ...provided,
+                          bg: state.isFocused ? "aset" : "white",
+                          color: state.isFocused ? "white" : "black",
+                        }),
+                      }}
+                    />
+                  </FormControl>
                   <FormControl my={"30px"}>
                     <FormLabel fontSize={"24px"}>Nama Barang</FormLabel>
                     <AsyncSelect
@@ -574,7 +796,26 @@ function DetailLaporan(props) {
                       onChange={(e) =>
                         handleSubmitChange("keterangan", e.target.value)
                       }
-                      placeholder="Contoh: 5000"
+                      placeholder="Contoh: Pembelian rutin"
+                    />
+                  </FormControl>
+                  <FormControl my={"30px"}>
+                    <FormLabel fontSize={"24px"}>Foto Barang</FormLabel>
+                    <Center>
+                      <Image
+                        src={previewUrl}
+                        alt="preview"
+                        boxSize="120px"
+                        objectFit="cover"
+                        borderRadius="md"
+                        mb={3}
+                      />
+                    </Center>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      bgColor={"terang"}
+                      onChange={handleFile}
                     />
                   </FormControl>
                 </SimpleGrid>
@@ -586,6 +827,25 @@ function DetailLaporan(props) {
                 Tambah Persediaan
               </Button>
             </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        <Modal isOpen={isFotoOpen} onClose={onFotoClose} size="xl" isCentered>
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Foto Persediaan</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              <Center>
+                <Image
+                  src={previewFotoUrl || Foto}
+                  alt="foto persediaan"
+                  maxH="70vh"
+                  objectFit="contain"
+                  borderRadius="md"
+                />
+              </Center>
+            </ModalBody>
           </ModalContent>
         </Modal>
       </LayoutAset>

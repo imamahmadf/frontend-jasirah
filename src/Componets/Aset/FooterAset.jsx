@@ -39,8 +39,7 @@ function FooterAset() {
                     ALamat:
                   </Text>
                   <Text fontSize={"14px"} fontWeight={300} me={"10px"}>
-                    Komplek Perkantoran Jl. Kusuma Bangsa KM. 05 Gedung A. Lt.2
-                    Kav. 1 Kav.1,Tanah Grogot,Paser,Kalimantan Timur 76251
+                    alamat
                   </Text>
                 </Box>
               </Flex>{" "}
@@ -56,7 +55,7 @@ function FooterAset() {
                     Email:
                   </Text>
                   <Text fontSize={"14px"} fontWeight={300} me={"10px"}>
-                    dinkespaser.kaltim@gmail.com
+                    isi email
                   </Text>
                 </Box>
               </Flex>{" "}
@@ -72,7 +71,7 @@ function FooterAset() {
                     Instagram:
                   </Text>
                   <Text fontSize={"14px"} fontWeight={300} me={"10px"}>
-                    dinkespaserkab
+                    isi ig
                   </Text>
                 </Box>
               </Flex>

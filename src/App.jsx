@@ -68,6 +68,9 @@ import LaporanPersediaan from "./pages/Aset/LaporanPersediaan.jsx";
 import DetailLaporan from "./pages/Aset/DetailLaporan.jsx";
 import DaftarSPPD from "./pages/Surat/DaftarSPPD.jsx";
 import LaporanPersediaanKeluar from "./pages/Aset/LaporanPersediaanKeluar.jsx";
+import TrackingPersediaan from "./pages/Aset/TrackingPersediaan.jsx";
+import DetailTrackingPersediaan from "./pages/Aset/DetailTrackingPersediaan.jsx";
+import MutasiPersediaan from "./pages/Aset/MutasiPersediaan.jsx";
 import RekapAdminAset from "./pages/Aset/RekapAdminAset.jsx";
 import SuratPesanan from "./pages/Aset/SuratPesanan.jsx";
 import LaporanUsulanPegawai from "./pages/Pegawai/LaporanUsulanPegawai.jsx";
@@ -127,6 +130,21 @@ import templateBPDKeuangan from "./pages/Keuangan/TemplateBPDKeuangan.jsx";
 //////////////////////APLIKASI_PJLP//////////////////////
 import VerifikasiRencanaAksiKerja from "./pages/Aplikasi_PJLP/Atasan/VerifikasiRencanaAksiKerja.jsx";
 import IndikatorKualitatifPJPL from "./pages/Aplikasi_PJLP/Admin/IndikatorKualitatifPJPL.jsx";
+//////////////////////payroll/////////////////////////
+
+import DaftarPayroll from "./pages/Payroll/DaftarPayroll.jsx";
+import DetailPayroll from "./pages/Payroll/DetailPayroll.jsx";
+import PengaturanPayroll from "./pages/Payroll/PengaturanPayroll.jsx";
+
+/////////////////PRESENSI/////////////////////////////////
+
+import DaftarPresensi from "./pages/Presensi/DaftarPresensi.jsx";
+import DetailPresensi from "./pages/Presensi/DetailPresensi.jsx";
+
+///////////PENGELUARAN///////////////////////////
+
+import DaftarPengeluaran from "./pages/Pengeluaran/DaftarPengeluaran.jsx";
+import DashboardPengeluaran from "./pages/Pengeluaran/DashboardPengeluaran.jsx";
 
 function App() {
   const dispatch = useDispatch();
@@ -175,18 +193,7 @@ function App() {
             exact
             roleRoute={[5, 1]}
           />
-          <ProtectedRoute
-            component={SuratTugasKadis}
-            path="/kepala-dinas/daftar-kadis"
-            exact
-            roleRoute={[5, 1]}
-          />
-          <ProtectedRoute
-            component={KadisKalender}
-            path="/perjalanan/kalender-kadis"
-            exact
-            roleRoute={[5, 1]}
-          />
+
           <ProtectedRoute
             component={Profile}
             path="/profile"
@@ -226,18 +233,7 @@ function App() {
             exact
             roleRoute={[5, 1]}
           />
-          <ProtectedRoute
-            component={TemplateKadis}
-            path="/kepala-dinas/template-kadis"
-            exact
-            roleRoute={[5, 1]}
-          />
-          <ProtectedRoute
-            component={PerjalananKadis}
-            path="/kepala-dinas/perjalanan-kadis"
-            exact
-            roleRoute={[5, 6]}
-          />
+
           <ProtectedRoute
             component={RampungAdmin}
             path="/admin/rampung/:id"
@@ -558,6 +554,24 @@ function App() {
             roleRoute={[5, 10, 8]}
           />
           <ProtectedRoute
+            component={TrackingPersediaan}
+            path="/aset/tracking-persediaan"
+            exact
+            roleRoute={[5, 10, 8]}
+          />
+          <ProtectedRoute
+            component={DetailTrackingPersediaan}
+            path="/aset/tracking-persediaan/:id"
+            exact
+            roleRoute={[5, 10, 8]}
+          />
+          <ProtectedRoute
+            component={MutasiPersediaan}
+            path="/aset/mutasi-persediaan"
+            exact
+            roleRoute={[5, 10, 8]}
+          />
+          <ProtectedRoute
             component={DaftarKwitansiGlobal}
             path="/perjalanan/kwitansi-global"
             exact
@@ -802,6 +816,56 @@ function App() {
             path="/sistem-PJLP/verifikasi-rencana-aksi-kerja"
             exact
             roleRoute={[5, 1, 9]}
+          />
+          {/* ///////////PAYROLL/////////////// */}
+          <ProtectedRoute
+            component={DaftarPayroll}
+            path="/admin-pegawai/daftar-payroll"
+            exact
+            roleRoute={[5, 1]}
+          />
+
+          <ProtectedRoute
+            component={DetailPayroll}
+            path="/admin-pegawai/detail-payroll/:id"
+            exact
+            roleRoute={[5, 1]}
+          />
+          <ProtectedRoute
+            component={PengaturanPayroll}
+            path="/admin-pegawai/pengaturan-payroll"
+            exact
+            roleRoute={[5, 1]}
+          />
+
+          {/* //////////////PRESENSI////////////////// */}
+
+          <ProtectedRoute
+            component={DaftarPresensi}
+            path="/presensi/daftar-presensi"
+            exact
+            roleRoute={[5, 1, 9]}
+          />
+          <ProtectedRoute
+            component={DetailPresensi}
+            path="/presensi/detail-presensi"
+            exact
+            roleRoute={[5, 1, 9]}
+          />
+
+          {/* ////////////PENGELUARAN///////////// */}
+
+          <ProtectedRoute
+            component={DaftarPengeluaran}
+            path="/pengeluaran/daftar-pengeluaran"
+            exact
+            roleRoute={[5, 1]}
+          />
+          <ProtectedRoute
+            component={DashboardPengeluaran}
+            path="/pengeluaran/dashboard"
+            exact
+            roleRoute={[5, 1]}
           />
           <Route component={LoginPegawai} path="/pegawai/login" />
           <Route component={verifikasi} path="/verifikasi/:id" />

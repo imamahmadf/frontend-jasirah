@@ -32,7 +32,7 @@ const TandaTangan = ({ dataSeed, state, actions }) => {
         </Heading>
       </HStack>
       <SimpleGrid columns={2} spacing={6} p={"30px"}>
-        <FormControl border={0} flex="1" mb={"20px"}>
+        {/* <FormControl border={0} flex="1" mb={"20px"}>
           <FormLabel fontSize={"20px"} fontWeight={"500"} mb={"10px"}>
             Tanda Tangan Nota Dinas/Telaahan Staf
           </FormLabel>
@@ -73,7 +73,7 @@ const TandaTangan = ({ dataSeed, state, actions }) => {
               }),
             }}
           />
-        </FormControl>
+        </FormControl> */}
 
         <FormControl border={0} flex="1" mb={"20px"}>
           <FormLabel fontSize={"20px"} fontWeight={"500"} mb={"10px"}>
@@ -84,8 +84,8 @@ const TandaTangan = ({ dataSeed, state, actions }) => {
               const uniqueIndukUnitKerjaIds = [
                 ...new Set(
                   dataSeed?.resultTtdSuratTugas?.map(
-                    (item) => item.indukUnitKerjaId
-                  ) || []
+                    (item) => item.indukUnitKerjaId,
+                  ) || [],
                 ),
               ];
 
@@ -175,7 +175,7 @@ const TandaTangan = ({ dataSeed, state, actions }) => {
           />
         </FormControl>
 
-        <FormControl border={0} flex="1" mb={"20px"}>
+        {/* <FormControl border={0} flex="1" mb={"20px"}>
           <FormLabel fontSize={"20px"} fontWeight={"500"} mb={"10px"}>
             Tanda Tangan PPTK
           </FormLabel>
@@ -216,7 +216,7 @@ const TandaTangan = ({ dataSeed, state, actions }) => {
               }),
             }}
           />
-        </FormControl>
+        </FormControl> */}
       </SimpleGrid>
     </Container>
   );

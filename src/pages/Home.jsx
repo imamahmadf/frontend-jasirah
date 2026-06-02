@@ -29,7 +29,7 @@ import {
 import Layout from "../Componets/Layout";
 import { useSelector } from "react-redux";
 import { selectIsAuthenticated, userRedux } from "../Redux/Reducers/auth";
-import FotoDinkes from "../assets/dinkes.jpg";
+import FotoDinkes from "../assets/fototanki.jpg";
 import { getSEOConfig } from "../config/seoConfig";
 import { useHistory } from "react-router-dom";
 import axios from "axios";
@@ -53,7 +53,7 @@ ChartJS.register(
   ArcElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 );
 
 // Animasi keyframes
@@ -121,7 +121,7 @@ function Home() {
   const [dataSubKegiatan, setDataSubKegiatan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filterTahun, setFilterTahun] = useState(
-    new Date().getFullYear().toString()
+    new Date().getFullYear().toString(),
   );
 
   // Fetch data sub kegiatan untuk dashboard
@@ -135,7 +135,7 @@ function Home() {
       const res = await axios.get(
         `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/sub-kegiatan/get/${
           user[0]?.unitKerja_profile?.id
-        }?&filterTahun=${filterTahun}`
+        }?&filterTahun=${filterTahun}`,
       );
       setDataSubKegiatan(res.data.result);
     } catch (err) {
@@ -173,7 +173,7 @@ function Home() {
       return (
         item.anggaranByTipe?.reduce(
           (sum, tipe) => sum + (tipe.anggaran || 0),
-          0
+          0,
         ) || 0
       );
     });
@@ -181,7 +181,7 @@ function Home() {
       return (
         item.anggaranByTipe?.reduce(
           (sum, tipe) => sum + (tipe.totalRealisasi || 0),
-          0
+          0,
         ) || 0
       );
     });
@@ -216,12 +216,12 @@ function Home() {
       const totalAnggaran =
         item.anggaranByTipe?.reduce(
           (sum, tipe) => sum + (tipe.anggaran || 0),
-          0
+          0,
         ) || 0;
       const totalRealisasi =
         item.anggaranByTipe?.reduce(
           (sum, tipe) => sum + (tipe.totalRealisasi || 0),
-          0
+          0,
         ) || 0;
       return totalAnggaran > 0
         ? ((totalRealisasi / totalAnggaran) * 100).toFixed(2)
@@ -782,7 +782,7 @@ function Home() {
                                               style: "currency",
                                               currency: "IDR",
                                               maximumFractionDigits: 0,
-                                            }
+                                            },
                                           ).format(context.parsed.x);
                                         }
                                         return label;
@@ -848,7 +848,7 @@ function Home() {
                                         if (context.parsed.x !== null) {
                                           label +=
                                             parseFloat(
-                                              context.parsed.x
+                                              context.parsed.x,
                                             ).toFixed(2) + "%";
                                         }
                                         return label;

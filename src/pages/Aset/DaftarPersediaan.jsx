@@ -38,6 +38,12 @@ import {
   Spacer,
   useToast,
   useColorMode,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
+  Badge,
 } from "@chakra-ui/react";
 import {
   Select as Select2,
@@ -90,7 +96,7 @@ function DaftarPersediaan() {
       .get(
         `${
           import.meta.env.VITE_REACT_APP_API_BASE_URL
-        }/persediaan/get?page=${page}&limit=${limit}`
+        }/persediaan/get?page=${page}&limit=${limit}`,
       )
       .then((res) => {
         setDataPersediaan(res.data.result);
@@ -129,11 +135,19 @@ function DaftarPersediaan() {
                 tipe.persediaans.length > 0
               ) {
                 tipe.persediaans.forEach((p) => {
+                  const tipeCodeFull = [ob?.kode, rin?.kode, tipe?.kodeRekening]
+                    .filter(Boolean)
+                    .join(".");
+                  const barangCodeFull = [tipeCodeFull, p?.kodeBarang ?? ""]
+                    .filter(Boolean)
+                    .join(".");
                   rows.push({
                     obNama,
                     rinObNama,
                     tipeNama,
                     persediaanNama: p?.nama ?? "",
+                    kode: barangCodeFull,
+                    nusp: p?.NUSP ?? "",
                   });
                 });
               }
@@ -149,11 +163,19 @@ function DaftarPersediaan() {
         const tipe = item?.tipePersediaan;
         const rin = tipe?.rinObPersediaan ?? tipe?.rinOb; // fallback penamaan relasi
         const ob = rin?.obPersediaan ?? rin?.ob; // fallback penamaan relasi
+        const tipeCodeFull = [ob?.kode, rin?.kode, tipe?.kodeRekening]
+          .filter(Boolean)
+          .join(".");
+        const barangCodeFull = [tipeCodeFull, item?.kodeBarang ?? ""]
+          .filter(Boolean)
+          .join(".");
         rows.push({
           obNama: ob?.nama ?? "",
           rinObNama: rin?.nama ?? "",
           tipeNama: tipe?.nama ?? "",
           persediaanNama: item?.nama ?? "",
+          kode: barangCodeFull,
+          nusp: item?.NUSP ?? "",
         });
       });
     }
@@ -161,8 +183,7 @@ function DaftarPersediaan() {
     return rows;
   }, [DataPersediaan]);
 
-  // Susun data dengan informasi rowSpan sehingga kolom grup tampil sekali (ke bawah)
-  const groupedRows = useMemo(() => {
+  const hierarchyTree = useMemo(() => {
     if (!Array.isArray(flattenedData) || flattenedData.length === 0) return [];
 
     const obMap = new Map();
@@ -175,164 +196,34 @@ function DaftarPersediaan() {
       if (!rinMap.has(rinKey)) rinMap.set(rinKey, new Map());
       const tipeMap = rinMap.get(rinKey);
       if (!tipeMap.has(tipeKey)) tipeMap.set(tipeKey, []);
-      tipeMap.get(tipeKey).push(row);
+      tipeMap.get(tipeKey).push({
+        persediaanNama: row.persediaanNama,
+        kode: row.kode ?? "",
+        nusp: row.nusp ?? "",
+      });
     });
 
-    const result = [];
-    for (const [obName, rinMap] of obMap.entries()) {
-      // hitung total leaf row di bawah ob
-      let obRowCount = 0;
-      for (const [, tipeMap] of rinMap.entries()) {
-        for (const [, rows] of tipeMap.entries()) {
-          obRowCount += rows.length;
-        }
-      }
-      let isFirstObRow = true;
-
-      for (const [rinName, tipeMap] of rinMap.entries()) {
-        let rinRowCount = 0;
-        for (const [, rows] of tipeMap.entries()) {
-          rinRowCount += rows.length;
-        }
-        let isFirstRinRow = true;
-
-        for (const [tipeName, rows] of tipeMap.entries()) {
-          const tipeRowCount = rows.length;
-          let isFirstTipeRow = true;
-          for (const row of rows) {
-            result.push({
-              obNama: obName,
-              showOb: isFirstObRow,
-              obRowSpan: isFirstObRow ? obRowCount : undefined,
-              rinObNama: rinName,
-              showRin: isFirstRinRow,
-              rinRowSpan: isFirstRinRow ? rinRowCount : undefined,
-              tipeNama: tipeName,
-              showTipe: isFirstTipeRow,
-              tipeRowSpan: isFirstTipeRow ? tipeRowCount : undefined,
-              persediaanNama: row.persediaanNama,
-            });
-            isFirstObRow = false;
-            isFirstRinRow = false;
-            isFirstTipeRow = false;
-          }
-        }
-      }
-    }
-
-    return result;
+    return Array.from(obMap.entries()).map(([obNama, rinMap]) => {
+      const rinList = Array.from(rinMap.entries()).map(
+        ([rinObNama, tipeMap]) => {
+          const tipeList = Array.from(tipeMap.entries()).map(
+            ([tipeNama, items]) => ({
+              tipeNama,
+              items,
+            }),
+          );
+          const barangCount = tipeList.reduce(
+            (sum, t) => sum + t.items.length,
+            0,
+          );
+          return { rinObNama, tipeList, barangCount };
+        },
+      );
+      const barangCount = rinList.reduce((sum, r) => sum + r.barangCount, 0);
+      return { obNama, rinList, barangCount };
+    });
   }, [flattenedData]);
 
-  // Susun baris linear seperti contoh: tiap level (Ob/Rin/Tipe/Persediaan) jadi satu baris, dengan kode hanya untuk Tipe dan Persediaan
-  const linearHierarchyRows = useMemo(() => {
-    const rows = [];
-
-    // Jika DataPersediaan berbentuk hirarki penuh (array Ob)
-    if (
-      Array.isArray(DataPersediaan) &&
-      DataPersediaan.length > 0 &&
-      Array.isArray(DataPersediaan[0]?.rinObPersediaans)
-    ) {
-      DataPersediaan.forEach((ob) => {
-        rows.push({ level: "ob", name: ob?.nama ?? "", code: "", nusp: "" });
-        const obKode = ob?.kode ?? "";
-        ob?.rinObPersediaans?.forEach((rin) => {
-          rows.push({
-            level: "rin",
-            name: rin?.nama ?? "",
-            code: "",
-            nusp: "",
-          });
-          const rinKode = rin?.kode ?? "";
-          rin?.tipePersediaans?.forEach((tipe) => {
-            const tipeKode = tipe?.kodeRekening ?? "";
-            const tipeCodeFull = [obKode, rinKode, tipeKode]
-              .filter(Boolean)
-              .join(".");
-            rows.push({
-              level: "tipe",
-              name: tipe?.nama ?? "",
-              code: tipeCodeFull,
-              nusp: "",
-            });
-            tipe?.persediaans?.forEach((p) => {
-              const kodeBarang = p?.kodeBarang ?? "";
-              const barangCodeFull = [tipeCodeFull, kodeBarang]
-                .filter(Boolean)
-                .join(".");
-              rows.push({
-                level: "persediaan",
-                name: p?.nama ?? "",
-                code: barangCodeFull,
-                nusp: p?.NUSP ?? "",
-              });
-            });
-          });
-        });
-      });
-      return rows;
-    }
-
-    // Jika DataPersediaan berbentuk flat (daftar persediaan), kelompokkan agar membentuk hirarki
-    const obMap = new Map();
-    DataPersediaan?.forEach((item) => {
-      const tipe = item?.tipePersediaan;
-      const rin = tipe?.rinObPersediaan ?? tipe?.rinOb;
-      const ob = rin?.obPersediaan ?? rin?.ob;
-      const obKey = `${ob?.kode ?? ""}|${ob?.nama ?? ""}`;
-      const rinKey = `${rin?.kode ?? ""}|${rin?.nama ?? ""}`;
-      const tipeKey = `${tipe?.kodeRekening ?? ""}|${tipe?.nama ?? ""}`;
-
-      if (!obMap.has(obKey)) {
-        obMap.set(obKey, { meta: ob, rinMap: new Map() });
-      }
-      const rinMap = obMap.get(obKey).rinMap;
-      if (!rinMap.has(rinKey)) {
-        rinMap.set(rinKey, { meta: rin, tipeMap: new Map() });
-      }
-      const tipeMap = rinMap.get(rinKey).tipeMap;
-      if (!tipeMap.has(tipeKey)) {
-        tipeMap.set(tipeKey, { meta: tipe, items: [] });
-      }
-      tipeMap.get(tipeKey).items.push(item);
-    });
-
-    for (const [obKey, obVal] of obMap.entries()) {
-      const [, obNama] = obKey.split("|");
-      const obKode = obVal?.meta?.kode ?? "";
-      rows.push({ level: "ob", name: obNama, code: "", nusp: "" });
-      for (const [rinKey, rinVal] of obVal.rinMap.entries()) {
-        const [, rinNama] = rinKey.split("|");
-        const rinKode = rinVal?.meta?.kode ?? "";
-        rows.push({ level: "rin", name: rinNama, code: "", nusp: "" });
-        for (const [tipeKey, tipeVal] of rinVal.tipeMap.entries()) {
-          const [tipeKode, tipeNama] = tipeKey.split("|");
-          const tipeCodeFull = [obKode, rinKode, tipeKode]
-            .filter(Boolean)
-            .join(".");
-          rows.push({
-            level: "tipe",
-            name: tipeNama,
-            code: tipeCodeFull,
-            nusp: "",
-          });
-          for (const p of tipeVal.items) {
-            const barangCodeFull = [tipeCodeFull, p?.kodeBarang ?? ""]
-              .filter(Boolean)
-              .join(".");
-            rows.push({
-              level: "persediaan",
-              name: p?.nama ?? "",
-              code: barangCodeFull,
-              nusp: p?.NUSP ?? "",
-            });
-          }
-        }
-      }
-    }
-
-    return rows;
-  }, [DataPersediaan]);
   const tambahPersediaan = () => {
     axios
       .post(`${import.meta.env.VITE_REACT_APP_API_BASE_URL}/persediaan/post`, {
@@ -401,78 +292,160 @@ function DaftarPersediaan() {
 
               <Spacer />
             </HStack>{" "}
-            <Table>
-              <Thead bgColor={"aset"}>
-                <Tr>
-                  <Th color={"white"}>Uraian</Th>
-                  <Th color={"white"}>Kode</Th>
-                  <Th color={"white"}>NUSP</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {linearHierarchyRows?.map((row, index) => {
-                  const paddingLeft =
-                    row.level === "ob"
-                      ? 6
-                      : row.level === "rin"
-                      ? 6
-                      : row.level === "tipe"
-                      ? 10
-                      : 14;
-                  const isTipe = row.level === "tipe";
-                  return (
-                    <Tr
-                      border="1px solid"
-                      key={`${row.level}-${row.name}-${row.code}-${index}`}
-                      bg={
-                        row.level === "tipe"
-                          ? "blue.100"
-                          : row.level === "rin"
-                          ? "blue.200"
-                          : row.level === "ob"
-                          ? "blue.300"
-                          : undefined
-                      }
+            {hierarchyTree.length === 0 ? (
+              <Box textAlign="center" py={8} color="gray.500">
+                Tidak ada data persediaan
+              </Box>
+            ) : (
+              <Accordion allowMultiple reduceMotion>
+                {hierarchyTree.map((ob, obIndex) => (
+                  <AccordionItem
+                    key={`ob-${obIndex}-${ob.obNama}`}
+                    border="1px solid"
+                    borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+                    mb={3}
+                    borderRadius="md"
+                    overflow="hidden"
+                  >
+                    <AccordionButton
+                      bg={colorMode === "dark" ? "blue.900" : "blue.100"}
+                      _hover={{
+                        bg: colorMode === "dark" ? "blue.800" : "blue.200",
+                      }}
+                      py={4}
                     >
-                      <Td border="1px solid" pl={`${paddingLeft}`}>
-                        {row.name}
-                      </Td>
-                      <Td border="1px solid">{row.code}</Td>
-                      <Td border="1px solid">{row.nusp || ""}</Td>
-                    </Tr>
-                  );
-                })}
-              </Tbody>
-            </Table>
+                      <Box flex="1" textAlign="left">
+                        <Text fontWeight="bold" fontSize="md">
+                          Objek: {ob.obNama}
+                        </Text>
+                      </Box>
+                      <Badge mr={3} colorScheme="blue">
+                        {ob.barangCount} barang
+                      </Badge>
+                      <AccordionIcon />
+                    </AccordionButton>
+                    <AccordionPanel pb={4} px={3}>
+                      <Accordion allowMultiple reduceMotion>
+                        {ob.rinList.map((rin, rinIndex) => (
+                          <AccordionItem
+                            key={`rin-${obIndex}-${rinIndex}-${rin.rinObNama}`}
+                            border="1px solid"
+                            borderColor={
+                              colorMode === "dark" ? "gray.600" : "gray.200"
+                            }
+                            mb={2}
+                            borderRadius="md"
+                            overflow="hidden"
+                          >
+                            <AccordionButton
+                              bg={colorMode === "dark" ? "blue.800" : "blue.50"}
+                              _hover={{
+                                bg:
+                                  colorMode === "dark"
+                                    ? "blue.700"
+                                    : "blue.100",
+                              }}
+                              py={3}
+                              pl={6}
+                            >
+                              <Box flex="1" textAlign="left">
+                                <Text fontWeight="semibold">
+                                  Rincian Objek: {rin.rinObNama}
+                                </Text>
+                              </Box>
+                              <Badge mr={3} colorScheme="cyan">
+                                {rin.barangCount} barang
+                              </Badge>
+                              <AccordionIcon />
+                            </AccordionButton>
+                            <AccordionPanel pb={3} px={2}>
+                              <Accordion allowMultiple reduceMotion>
+                                {rin.tipeList.map((tipe, tipeIndex) => (
+                                  <AccordionItem
+                                    key={`tipe-${obIndex}-${rinIndex}-${tipeIndex}-${tipe.tipeNama}`}
+                                    border="1px solid"
+                                    borderColor={
+                                      colorMode === "dark"
+                                        ? "gray.600"
+                                        : "gray.200"
+                                    }
+                                    mb={2}
+                                    borderRadius="md"
+                                    overflow="hidden"
+                                  >
+                                    <AccordionButton
+                                      bg={
+                                        colorMode === "dark"
+                                          ? "gray.700"
+                                          : "gray.50"
+                                      }
+                                      _hover={{
+                                        bg:
+                                          colorMode === "dark"
+                                            ? "gray.600"
+                                            : "gray.100",
+                                      }}
+                                      py={3}
+                                      pl={8}
+                                    >
+                                      <Box flex="1" textAlign="left">
+                                        <Text fontWeight="medium">
+                                          Tipe: {tipe.tipeNama}
+                                        </Text>
+                                      </Box>
+                                      <Badge mr={3} colorScheme="gray">
+                                        {tipe.items.length} barang
+                                      </Badge>
+                                      <AccordionIcon />
+                                    </AccordionButton>
+                                    <AccordionPanel p={0}>
+                                      <Table size="sm" variant="simple">
+                                        <Thead bgColor="aset">
+                                          <Tr>
+                                            <Th color="white">Uraian Barang</Th>
+                                            <Th color="white">Kode</Th>
+                                            <Th color="white">NUSP</Th>
+                                          </Tr>
+                                        </Thead>
+                                        <Tbody>
+                                          {tipe.items.map((item, itemIndex) => (
+                                            <Tr
+                                              key={`item-${obIndex}-${rinIndex}-${tipeIndex}-${itemIndex}`}
+                                              _hover={{
+                                                bg:
+                                                  colorMode === "dark"
+                                                    ? "gray.700"
+                                                    : "gray.50",
+                                              }}
+                                            >
+                                              <Td pl={10}>
+                                                {item.persediaanNama}
+                                              </Td>
+                                              <Td
+                                                fontFamily="mono"
+                                                fontSize="sm"
+                                              >
+                                                {item.kode}
+                                              </Td>
+                                              <Td>{item.nusp}</Td>
+                                            </Tr>
+                                          ))}
+                                        </Tbody>
+                                      </Table>
+                                    </AccordionPanel>
+                                  </AccordionItem>
+                                ))}
+                              </Accordion>
+                            </AccordionPanel>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    </AccordionPanel>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
           </Container>{" "}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-
-              boxSizing: "border-box",
-              width: "100%",
-              height: "100%",
-            }}
-          >
-            <ReactPaginate
-              previousLabel={"+"}
-              nextLabel={"-"}
-              pageCount={pages}
-              onPageChange={changePage}
-              activeClassName={"item active "}
-              breakClassName={"item break-me "}
-              breakLabel={"..."}
-              containerClassName={"pagination"}
-              disabledClassName={"disabled-page"}
-              marginPagesDisplayed={1}
-              nextClassName={"item next "}
-              pageClassName={"item pagination-page "}
-              pageRangeDisplayed={2}
-              previousClassName={"item previous"}
-            />
-          </div>
         </Box>{" "}
         <Modal
           closeOnOverlayClick={false}
@@ -533,7 +506,7 @@ function DaftarPersediaan() {
                     bgColor={"white"}
                     flex="1"
                   >
-                    <FormLabel fontSize={"24px"}>Jenis Kendaraan</FormLabel>
+                    <FormLabel fontSize={"24px"}>Tipe Persediaan</FormLabel>
                     <Select2
                       options={dataSeed?.resultTipe?.map((val) => ({
                         value: val.id,

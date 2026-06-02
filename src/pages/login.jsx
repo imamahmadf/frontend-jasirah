@@ -49,6 +49,8 @@ import LogoPena from "../assets/penaLogo.png";
 import LogoAset from "../assets/asetLogo.png";
 import LogoPegawai from "../assets/pegawaiLogo.png";
 import LogoPerencanaan from "../assets/perencanaanLogo.png";
+import LogoUtama from "../assets/logo JDB.png";
+import FotoTangki from "../assets/fototanki.jpg";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -205,14 +207,14 @@ const Login = () => {
           h="100vh"
           w="100%"
           objectFit="cover"
-          src={FotoLogin}
+          src={FotoTangki}
           alt="Background Login"
         />
       </Box>
 
       {/* Bagian Form Login */}
       <Center
-        bgGradient="linear-gradient(135deg, rgba(55, 176, 134, 1) 0%, rgba(19, 122, 106, 1) 100%)"
+        bgGradient="linear-gradient(135deg, rgb(224, 152, 17) 0%, rgb(224, 126, 13) 100%)"
         height="100vh"
         w={{ base: "100%", md: "50%" }}
         position="relative"
@@ -245,12 +247,12 @@ const Login = () => {
                 <Image
                   height="90px"
                   objectFit="contain"
-                  src={LogoDinkes}
+                  src={LogoUtama}
                   alt="Logo Dinkes"
                   transition="transform 0.3s ease"
                   _hover={{ transform: "scale(1.05)" }}
                 />
-                <Box textAlign={{ base: "center", md: "left" }}>
+                {/* <Box textAlign={{ base: "center", md: "left" }}>
                   <Heading
                     as="h1"
                     size={{ base: "md", md: "lg" }}
@@ -268,7 +270,7 @@ const Login = () => {
                   >
                     KABUPATEN PASER
                   </Text>
-                </Box>
+                </Box> */}
               </Flex>
               <Divider borderColor="gray.200" />
             </VStack>

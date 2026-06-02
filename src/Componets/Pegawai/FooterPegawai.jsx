@@ -64,7 +64,7 @@ function FooterPegawai() {
                   Alamat
                 </Text>
               </HStack>
-              <Text
+              {/* <Text
                 fontSize={"14px"}
                 fontWeight={400}
                 color={"white"}
@@ -74,7 +74,7 @@ function FooterPegawai() {
               >
                 Komplek Perkantoran Jl. Kusuma Bangsa KM. 05 Gedung A. Lt.2 Kav.
                 1 Kav.1, Tanah Grogot, Paser, Kalimantan Timur 76251
-              </Text>
+              </Text> */}
             </VStack>
 
             {/* Email */}
@@ -92,7 +92,7 @@ function FooterPegawai() {
                   Email
                 </Text>
               </HStack>
-              <Link
+              {/* <Link
                 href="mailto:dinkespaser.kaltim@gmail.com"
                 fontSize={"14px"}
                 fontWeight={400}
@@ -106,7 +106,7 @@ function FooterPegawai() {
                 transition="all 0.2s ease"
               >
                 dinkespaser.kaltim@gmail.com
-              </Link>
+              </Link> */}
             </VStack>
 
             {/* Instagram */}
@@ -124,7 +124,7 @@ function FooterPegawai() {
                   Instagram
                 </Text>
               </HStack>
-              <Link
+              {/* <Link
                 href="https://instagram.com/dinkespaserkab"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -140,7 +140,7 @@ function FooterPegawai() {
                 transition="all 0.2s ease"
               >
                 @dinkespaserkab
-              </Link>
+              </Link> */}
             </VStack>
           </SimpleGrid>
         </Container>

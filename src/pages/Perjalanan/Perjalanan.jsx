@@ -43,12 +43,8 @@ function Perjalanan() {
   const validationSchema = useMemo(
     () =>
       Yup.object().shape({
-        klasifikasi: isNotaDinasOrTelaahan
-          ? Yup.mixed().nullable().required("Klasifikasi wajib diisi")
-          : Yup.mixed().nullable(),
-        kodeKlasifikasi: isNotaDinasOrTelaahan
-          ? Yup.mixed().nullable().required("Kode Klasifikasi wajib diisi")
-          : Yup.mixed().nullable(),
+        klasifikasi: Yup.mixed().nullable(),
+        kodeKlasifikasi: Yup.mixed().nullable(),
         dasar: isUndangan
           ? Yup.string().required("Dasar wajib diisi")
           : Yup.string().nullable(),
@@ -62,22 +58,24 @@ function Perjalanan() {
           .required("Tanggal pengajuan wajib diisi")
           .matches(
             /^\d{4}-\d{2}-\d{2}$/,
-            "Format tanggal tidak valid (YYYY-MM-DD)"
+            "Format tanggal tidak valid (YYYY-MM-DD)",
           ),
-        sumberDana: Yup.mixed().nullable().required("Sumber Dana wajib dipilih"),
+        sumberDana: Yup.mixed()
+          .nullable()
+          .required("Sumber Dana wajib dipilih"),
         bendahara: Yup.mixed().nullable().required("Bendahara wajib dipilih"),
         personil: Yup.array()
           .of(Yup.mixed().nullable())
           .test(
             "personil-0-required",
             "Personil 1 wajib dipilih",
-            (arr) => arr[0] !== null
+            (arr) => arr[0] !== null,
           ),
         subKegiatan: isNotaDinasOrTelaahan
           ? Yup.mixed().nullable().required("Sub kegiatan wajib diisi")
           : Yup.mixed().nullable(),
       }),
-    [isUndangan, isNotaDinasOrTelaahan]
+    [isUndangan, isNotaDinasOrTelaahan],
   );
 
   if (isLoading) {
@@ -88,22 +86,22 @@ function Perjalanan() {
     );
   }
 
-  if (!dataTemplate.templateNotaDinas) {
-    return (
-      <Box bgColor={"secondary"} pb={"40px"} px={"30px"}>
-        <Container variant={"primary"} maxW={"1280px"} p={"30px"}>
-          <Center minH={"80vh"}>
-            <Button
-              onClick={() => history.push("/admin/template")}
-              variant={"primary"}
-            >
-              Upload Template Surat
-            </Button>
-          </Center>
-        </Container>
-      </Box>
-    );
-  }
+  // if (!dataTemplate.templateNotaDinas) {
+  //   return (
+  //     <Box bgColor={"secondary"} pb={"40px"} px={"30px"}>
+  //       <Container variant={"primary"} maxW={"1280px"} p={"30px"}>
+  //         <Center minH={"80vh"}>
+  //           <Button
+  //             onClick={() => history.push("/admin/template")}
+  //             variant={"primary"}
+  //           >
+  //             Upload Template Surat
+  //           </Button>
+  //         </Center>
+  //       </Container>
+  //     </Box>
+  //   );
+  // }
 
   const initialValues = {
     klasifikasi: null,
@@ -175,7 +173,9 @@ function Perjalanan() {
                   actions={actions}
                   dataKota={dataKota}
                   perjalananKota={perjalananKota}
-                  indukUnitKerjaId={user[0]?.unitKerja_profile?.indukUnitKerja?.id}
+                  indukUnitKerjaId={
+                    user[0]?.unitKerja_profile?.indukUnitKerja?.id
+                  }
                   values={values}
                   errors={errors}
                   touched={touched}

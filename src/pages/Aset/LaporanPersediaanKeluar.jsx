@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import LayoutAset from "../../Componets/Aset/LayoutAset";
 import ReactPaginate from "react-paginate";
@@ -39,6 +39,9 @@ import {
   Spacer,
   useToast,
   useColorMode,
+  Stack,
+  Badge,
+  Divider,
 } from "@chakra-ui/react";
 import {
   Select as Select2,
@@ -64,6 +67,7 @@ function LaporanPersediaanKeluar(props) {
   const [jumlahKeluar, setJumlahKeluar] = useState(0);
   const [tujuan, setTujuan] = useState("");
   const [selectedItemId, setSelectedItemId] = useState(null);
+  const [maxKeluar, setMaxKeluar] = useState(0);
   const user = useSelector(userRedux);
   const role = useSelector(selectRole);
   const {
@@ -111,8 +115,9 @@ function LaporanPersediaanKeluar(props) {
     }
   }
 
-  const handleTambahKeluar = (itemId) => {
+  const handleTambahKeluar = (itemId, sisaStok) => {
     setSelectedItemId(itemId);
+    setMaxKeluar(sisaStok || 0);
     setJumlahKeluar(0);
     setTujuan("");
     onModalKeluarOpen();
@@ -123,6 +128,16 @@ function LaporanPersediaanKeluar(props) {
       toast({
         title: "Error!",
         description: "Mohon isi jumlah dan tujuan",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    if (parseInt(jumlahKeluar) > maxKeluar) {
+      toast({
+        title: "Error!",
+        description: `Jumlah melebihi sisa stok (${maxKeluar})`,
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -158,7 +173,9 @@ function LaporanPersediaanKeluar(props) {
         console.error(err.message);
         toast({
           title: "Error!",
-          description: "Gagal menambahkan data persediaan keluar",
+          description:
+            err.response?.data?.message ||
+            "Gagal menambahkan data persediaan keluar",
           status: "error",
           duration: 5000,
           isClosable: true,
@@ -372,13 +389,234 @@ function LaporanPersediaanKeluar(props) {
           mergedHargaSatuan: isHargaSatuanUniform ? allPrices[0] || 0 : null,
           rows,
           totalKeluar,
-          stokAwal: (Number(item?.sisa) || 0) + (Number(totalKeluar) || 0),
+          stokAwal: Number(item?.stokAwal) || 0,
+          foto: item?.foto || null,
           isStokMasukIdUniform,
           groupStokMasukId,
         };
       })
     : [];
+
+  const summary = useMemo(() => {
+    const totalBarang = grouped.length;
+    const totalKeluar = grouped.reduce((s, g) => s + g.totalKeluar, 0);
+    const totalSisa = grouped.reduce((s, g) => s + (Number(g.sisa) || 0), 0);
+    return { totalBarang, totalKeluar, totalSisa };
+  }, [grouped]);
+
+  const periode = DataPersediaan?.periode;
+  const formatTanggal = (d) =>
+    d ? new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-";
+  const formatRupiah = (n) => `Rp ${Number(n || 0).toLocaleString("id-ID")}`;
+  const apiBaseUrl = import.meta.env.VITE_REACT_APP_API_BASE_URL;
+
+  const renderFoto = (foto, size = "50px") =>
+    foto ? (
+      <Image
+        src={`${apiBaseUrl}${foto}`}
+        alt="foto persediaan"
+        boxSize={size}
+        objectFit="cover"
+        borderRadius="md"
+      />
+    ) : (
+      <Image
+        src={Foto}
+        alt="no foto"
+        boxSize={size}
+        objectFit="cover"
+        borderRadius="md"
+        opacity={0.5}
+      />
+    );
+
+  const getValidRows = (group) =>
+    group.rows.filter((r) => r.jumlahKeluar > 0 || r.tanggal || r.tujuan);
+
   let groupNumber = 0;
+
+  const InfoRow = ({ label, value, valueColor }) => (
+    <Flex justify="space-between" align="flex-start" py={1.5} gap={3}>
+      <Text fontSize="sm" color="gray.600" flexShrink={0}>
+        {label}
+      </Text>
+      <Text fontSize="sm" fontWeight="semibold" textAlign="right" color={valueColor}>
+        {value}
+      </Text>
+    </Flex>
+  );
+
+  const PageHeader = () => (
+    <Box mb={6}>
+      <Flex
+        direction={{ base: "column", md: "row" }}
+        justify="space-between"
+        align={{ base: "stretch", md: "center" }}
+        gap={3}
+        mb={4}
+      >
+        <Heading size={{ base: "md", md: "lg" }} color="aset">
+          Laporan Persediaan Keluar
+        </Heading>
+        {periode?.statusLaporan && (
+          <Badge
+            alignSelf={{ base: "flex-start", md: "center" }}
+            colorScheme={periode.statusLaporan === "buka" ? "green" : "red"}
+            fontSize="sm"
+            px={3}
+            py={1}
+            borderRadius="md"
+          >
+            Periode {periode.statusLaporan === "buka" ? "Buka" : "Tutup"}
+          </Badge>
+        )}
+      </Flex>
+
+      {periode && (
+        <Box
+          p={3}
+          mb={4}
+          borderRadius="md"
+          bg={colorMode === "dark" ? "gray.700" : "blue.50"}
+          borderLeft="4px solid"
+          borderLeftColor="aset"
+        >
+          <Text fontSize="sm" color="gray.600">
+            Periode Laporan
+          </Text>
+          <Text fontWeight="bold">
+            {formatTanggal(periode.tanggalAwal)} — {formatTanggal(periode.tanggalAkhir)}
+          </Text>
+        </Box>
+      )}
+
+      <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={3}>
+        <Box p={3} borderRadius="md" bg={colorMode === "dark" ? "gray.700" : "gray.50"} textAlign="center">
+          <Text fontSize="xs" color="gray.500">Jenis Barang</Text>
+          <Text fontSize="xl" fontWeight="bold" color="aset">{summary.totalBarang}</Text>
+        </Box>
+        <Box p={3} borderRadius="md" bg={colorMode === "dark" ? "gray.700" : "gray.50"} textAlign="center">
+          <Text fontSize="xs" color="gray.500">Total Keluar</Text>
+          <Text fontSize="xl" fontWeight="bold" color="red.500">{summary.totalKeluar}</Text>
+        </Box>
+        <Box p={3} borderRadius="md" bg={colorMode === "dark" ? "gray.700" : "gray.50"} textAlign="center">
+          <Text fontSize="xs" color="gray.500">Total Sisa Stok</Text>
+          <Text fontSize="xl" fontWeight="bold" color="green.600">{summary.totalSisa}</Text>
+        </Box>
+      </SimpleGrid>
+    </Box>
+  );
+
+  const renderMobileCards = () => {
+    if (!grouped.length) {
+      return (
+        <Box py={8} textAlign="center" bg="gray.50" borderRadius="md">
+          <Text color="gray.500">Tidak ada data persediaan keluar</Text>
+        </Box>
+      );
+    }
+
+    let no = 0;
+    return grouped.map((group) => {
+      no += 1;
+      const showTambah = periode?.statusLaporan === "buka";
+      const validRows = getValidRows(group);
+
+      return (
+        <Box
+          key={group.groupKey}
+          mb={4}
+          borderRadius="lg"
+          border="1px solid"
+          borderColor="gray.200"
+          overflow="hidden"
+          bg={colorMode === "dark" ? "gray.700" : "white"}
+          boxShadow="sm"
+        >
+          <Box bg="aset" px={4} py={3} color="white">
+            <HStack spacing={3} align="center">
+              {renderFoto(group.foto, "56px")}
+              <Box flex={1}>
+                <Text fontSize="xs" opacity={0.85}>#{no}</Text>
+                <Text fontWeight="bold" fontSize="md">{group.namaPersediaan}</Text>
+                <Text fontSize="sm" opacity={0.9}>Kode: {group.kodeBarang}</Text>
+              </Box>
+            </HStack>
+          </Box>
+
+          <Box px={4} py={3}>
+            <HStack spacing={2} flexWrap="wrap" mb={3}>
+              <Badge colorScheme="blue">Awal: {group.stokAwal}</Badge>
+              <Badge colorScheme="red">Keluar: {group.totalKeluar}</Badge>
+              <Badge colorScheme="green">Sisa: {group.sisa}</Badge>
+            </HStack>
+
+            <InfoRow
+              label="Harga Satuan"
+              value={
+                group.isHargaSatuanUniform
+                  ? formatRupiah(group.mergedHargaSatuan)
+                  : "Bervariasi per transaksi"
+              }
+            />
+
+            <Divider my={3} />
+            <Text fontSize="sm" fontWeight="bold" color="aset" mb={2}>
+              Riwayat Pengeluaran
+            </Text>
+
+            {validRows.length === 0 ? (
+              <Text fontSize="sm" color="gray.500" fontStyle="italic" py={2}>
+                Belum ada pengeluaran
+              </Text>
+            ) : (
+              validRows.map((row, idx) => (
+                <Box
+                  key={row.key}
+                  p={3}
+                  mb={2}
+                  borderRadius="md"
+                  border="1px solid"
+                  borderColor="gray.100"
+                  bg={colorMode === "dark" ? "gray.600" : "gray.50"}
+                >
+                  <Text fontSize="xs" fontWeight="bold" color="gray.500" mb={2}>
+                    #{idx + 1}
+                  </Text>
+                  <InfoRow
+                    label="Tanggal"
+                    value={row.tanggal ? formatTanggal(row.tanggal) : "-"}
+                  />
+                  <InfoRow label="Tujuan" value={row.tujuan || "-"} />
+                  {!group.isHargaSatuanUniform && (
+                    <InfoRow label="Harga Satuan" value={formatRupiah(row.hargaSatuan)} />
+                  )}
+                  <InfoRow
+                    label="Jumlah Keluar"
+                    value={row.jumlahKeluar}
+                    valueColor="red.500"
+                  />
+                </Box>
+              ))
+            )}
+
+            {showTambah && (
+              <Button
+                w="full"
+                mt={3}
+                size="sm"
+                colorScheme="blue"
+                onClick={() => handleTambahKeluar(group.stokMasukId, group.sisa)}
+              >
+                + Tambah Pengeluaran
+              </Button>
+            )}
+          </Box>
+        </Box>
+      );
+    });
+  };
+
   return (
     <>
       <LayoutAset>
@@ -386,39 +624,46 @@ function LaporanPersediaanKeluar(props) {
           maxW={"3280px"}
           bgColor={"secondary"}
           pb={"40px"}
-          px={"30px"}
+          px={{ base: "12px", md: "30px" }}
         >
           <Box
             style={{ overflowX: "auto" }}
             bgColor={"white"}
-            p={"30px"}
+            p={{ base: "16px", md: "30px" }}
             borderRadius={"5px"}
             bg={colorMode === "dark" ? "gray.800" : "white"}
           >
-            {JSON.stringify(DataPersediaan?.periode?.statusLaporan)}
+            <PageHeader />
 
-            {/* Tombol Download Excel */}
-            <Flex justify="flex-end" mb={4}>
+            <Stack mb={4} align={{ base: "stretch", md: "flex-end" }}>
               <Button
                 leftIcon={<BsFileEarmarkArrowDown />}
                 colorScheme="green"
                 onClick={downloadExcel}
                 size="md"
+                w={{ base: "full", md: "auto" }}
               >
                 Download Excel
               </Button>
-            </Flex>
+            </Stack>
 
+            <Box display={{ base: "block", md: "none" }} mb={4}>
+              {renderMobileCards()}
+            </Box>
+
+            <Box display={{ base: "none", md: "block" }} overflowX="auto">
             <Table variant={"aset"}>
               <Thead>
                 <Tr>
                   <Th>No.</Th>
+                  <Th>Foto</Th>
                   <Th maxWidth={"20px"}>Nama Persediaan</Th>
                   <Th>Kode Barang</Th>
                   <Th>Harga Satuan</Th>
                   <Th>Stok Awal</Th>
-                  <Th>Tanggal</Th> <Th>Tujuan</Th>
-                  <Th>Jumlah Keluar</Th>
+                  <Th>Tanggal</Th>
+                  <Th>Tujuan</Th>
+                  <Th isNumeric>Jumlah Keluar</Th>
                   <Th>Sisa</Th>
                   <Th>Aksi</Th>
                 </Tr>
@@ -427,31 +672,46 @@ function LaporanPersediaanKeluar(props) {
                 {grouped && grouped.length > 0 ? (
                   grouped.flatMap((group) => {
                     const rowCount = group.rows.length;
-                    const noCell = <Td rowSpan={rowCount}>{++groupNumber}</Td>;
+                    const groupBg = groupNumber % 2 === 0 ? "gray.50" : "white";
+                    const noCell = (
+                      <Td rowSpan={rowCount} bg={groupBg} fontWeight="bold">
+                        {++groupNumber}
+                      </Td>
+                    );
+                    const fotoCell = (
+                      <Td rowSpan={rowCount} bg={groupBg}>
+                        {renderFoto(group.foto)}
+                      </Td>
+                    );
                     const namaCell = (
-                      <Td rowSpan={rowCount}>{group.namaPersediaan}</Td>
+                      <Td rowSpan={rowCount} bg={groupBg} fontWeight="bold" maxW="200px">
+                        {group.namaPersediaan}
+                      </Td>
                     );
                     const kodeCell = (
-                      <Td rowSpan={rowCount}>{group.kodeBarang}</Td>
+                      <Td rowSpan={rowCount} bg={groupBg}>{group.kodeBarang}</Td>
                     );
-                    const sisaCell = <Td rowSpan={rowCount}>{group.sisa}</Td>;
+                    const sisaCell = (
+                      <Td rowSpan={rowCount} bg={groupBg} fontWeight="bold" color="green.600">
+                        {group.sisa}
+                      </Td>
+                    );
                     const hargaMergedCell = group.isHargaSatuanUniform ? (
-                      <Td rowSpan={rowCount}>
-                        Rp
-                        {Number(group.mergedHargaSatuan).toLocaleString(
-                          "id-ID"
-                        )}
+                      <Td rowSpan={rowCount} bg={groupBg} isNumeric>
+                        {formatRupiah(group.mergedHargaSatuan)}
                       </Td>
                     ) : null;
                     const stokAwalCell = (
-                      <Td rowSpan={rowCount}>{group.stokAwal}</Td>
+                      <Td rowSpan={rowCount} bg={groupBg} fontWeight="semibold">
+                        {group.stokAwal}
+                      </Td>
                     );
                     const aksiCell = (
                       <Td rowSpan={rowCount}>
                         {DataPersediaan?.periode?.statusLaporan === "buka" ? (
                           <Button
                             onClick={() =>
-                              handleTambahKeluar(group.stokMasukId)
+                              handleTambahKeluar(group.stokMasukId, group.sisa)
                             }
                             size="sm"
                             colorScheme="blue"
@@ -463,25 +723,26 @@ function LaporanPersediaanKeluar(props) {
                     );
 
                     return group.rows.map((row, idx) => (
-                      <Tr key={row.key}>
+                      <Tr key={row.key} bg={idx === 0 ? groupBg : undefined}>
                         {idx === 0 && noCell}
+                        {idx === 0 && fotoCell}
                         {idx === 0 && namaCell}
                         {idx === 0 && kodeCell}
                         {group.isHargaSatuanUniform ? (
                           idx === 0 && hargaMergedCell
                         ) : (
-                          <Td>
-                            Rp {Number(row.hargaSatuan).toLocaleString("id-ID")}
-                          </Td>
+                          <Td isNumeric>{formatRupiah(row.hargaSatuan)}</Td>
                         )}
                         {idx === 0 && stokAwalCell}
                         <Td>
-                          {row.tanggal
-                            ? new Date(row.tanggal).toLocaleDateString("id-ID")
-                            : "-"}
+                          {row.tanggal ? formatTanggal(row.tanggal) : "-"}
                         </Td>
-                        <Td>{row.tujuan || "-"}</Td>
-                        <Td>{row.jumlahKeluar}</Td>
+                        <Td maxW="180px" whiteSpace="normal">
+                          {row.tujuan || "-"}
+                        </Td>
+                        <Td isNumeric fontWeight="bold" color="red.500">
+                          {row.jumlahKeluar > 0 ? row.jumlahKeluar : "-"}
+                        </Td>
 
                         {idx === 0 && sisaCell}
                         {group.isStokMasukIdUniform ? (
@@ -490,7 +751,10 @@ function LaporanPersediaanKeluar(props) {
                           <Td>
                             <Button
                               onClick={() =>
-                                handleTambahKeluar(row.stokMasukId)
+                                handleTambahKeluar(
+                                  group.stokMasukId,
+                                  group.sisa
+                                )
                               }
                               size="sm"
                               colorScheme="blue"
@@ -504,13 +768,14 @@ function LaporanPersediaanKeluar(props) {
                   })
                 ) : (
                   <Tr>
-                    <Td colSpan={9} textAlign="center">
+                    <Td colSpan={11} textAlign="center">
                       Tidak ada data persediaan keluar
                     </Td>
                   </Tr>
                 )}
               </Tbody>
             </Table>
+            </Box>
           </Box>
         </Container>
 
@@ -521,7 +786,7 @@ function LaporanPersediaanKeluar(props) {
           onClose={onModalKeluarClose}
         >
           <ModalOverlay />
-          <ModalContent borderRadius={0} maxWidth="600px">
+          <ModalContent borderRadius={0} maxWidth={{ base: "95vw", md: "600px" }} mx={{ base: 2, md: 0 }}>
             <ModalHeader>
               <HStack>
                 <Box bgColor={"aset"} width={"30px"} height={"30px"}></Box>
@@ -533,20 +798,33 @@ function LaporanPersediaanKeluar(props) {
             <ModalCloseButton />
 
             <ModalBody>
-              <Box p={"20px"}>
+              <Box p={{ base: "12px", md: "20px" }}>
+                <Box
+                  mb={4}
+                  p={3}
+                  borderRadius="md"
+                  bg={colorMode === "dark" ? "gray.700" : "blue.50"}
+                >
+                  <Text fontSize="sm" color="gray.600">Sisa stok tersedia</Text>
+                  <Text fontSize="2xl" fontWeight="bold" color="green.600">
+                    {maxKeluar}
+                  </Text>
+                </Box>
                 <FormControl my={"20px"}>
-                  <FormLabel fontSize={"18px"}>Jumlah Keluar</FormLabel>
+                  <FormLabel fontSize={{ base: "md", md: "lg" }}>Jumlah Keluar</FormLabel>
                   <Input
                     height={"50px"}
                     bgColor={"terang"}
                     type="number"
+                    min={1}
+                    max={maxKeluar}
                     value={jumlahKeluar}
                     onChange={(e) => setJumlahKeluar(e.target.value)}
-                    placeholder="Masukkan jumlah yang keluar"
+                    placeholder={`Maks. ${maxKeluar}`}
                   />
                 </FormControl>
                 <FormControl my={"20px"}>
-                  <FormLabel fontSize={"18px"}>Tanggal</FormLabel>
+                  <FormLabel fontSize={{ base: "md", md: "lg" }}>Tanggal</FormLabel>
                   <Input
                     type={"date"}
                     height={"60px"}
@@ -559,7 +837,7 @@ function LaporanPersediaanKeluar(props) {
                   />
                 </FormControl>
                 <FormControl my={"20px"}>
-                  <FormLabel fontSize={"18px"}>Tujuan</FormLabel>
+                  <FormLabel fontSize={{ base: "md", md: "lg" }}>Tujuan</FormLabel>
                   <Textarea
                     height={"80px"}
                     bgColor={"terang"}

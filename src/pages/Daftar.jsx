@@ -677,7 +677,7 @@ function Daftar() {
               </Center>
             </Box>
           </Box>
-        ) : dataPerjalanan[0] ? (
+        ) : 1 ? (
           <Box
             bg={colorMode === "dark" ? "gray.900" : "secondary.light"}
             pb={{ base: "30px", md: "40px" }}

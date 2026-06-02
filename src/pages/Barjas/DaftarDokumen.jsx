@@ -115,9 +115,7 @@ function DaftarDokumen() {
       subKegPerId: Yup.mixed()
         .nullable()
         .required("Sub Kegiatan wajib dipilih"),
-      rekananId: Yup.mixed()
-        .nullable()
-        .required("Rekanan wajib dipilih"),
+      rekananId: Yup.mixed().nullable().required("Rekanan wajib dipilih"),
       akunBelanjaId: Yup.mixed()
         .nullable()
         .required("Akun Belanja wajib dipilih"),
@@ -129,12 +127,13 @@ function DaftarDokumen() {
       "nomorSP",
       "Nomor SP wajib diisi (pilih dari daftar atau tulis manual)",
       (value) => {
-        const hasNomorSPId = value?.nomorSPId != null && value?.nomorSPId !== "";
+        const hasNomorSPId =
+          value?.nomorSPId != null && value?.nomorSPId !== "";
         const hasNomorSPManual =
           value?.nomorSPManual != null &&
           String(value.nomorSPManual).trim() !== "";
         return hasNomorSPId || hasNomorSPManual;
-      }
+      },
     );
 
   const {
@@ -174,7 +173,7 @@ function DaftarDokumen() {
     axios
       .post(
         `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/barjas/post/rekanan`,
-        { nama: namaRekananBaru }
+        { nama: namaRekananBaru },
       )
       .then((res) => {
         toast({
@@ -276,7 +275,7 @@ function DaftarDokumen() {
       .get(
         `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/barjas/get/seed/${
           user[0]?.unitKerja_profile.id
-        }`
+        }`,
       )
       .then((res) => {
         console.log(res.data);
@@ -295,7 +294,7 @@ function DaftarDokumen() {
           import.meta.env.VITE_REACT_APP_API_BASE_URL
         }/barjas/get?time=${time}&page=${page}&limit=${limit}&unitKerjaId=${unitKerjaFilterId}&pegawaiId=${pegawaiFilterId}&startDate=${tanggalAwal}&endDate=${tanggalAkhir}&subKegPerId=${subKegPerFilterId}&indukUnitKerjaId=${
           user[0]?.unitKerja_profile?.indukUnitKerja?.id
-        }`
+        }`,
       )
       .then((res) => {
         setDataDokumen(res.data.result);
@@ -326,7 +325,7 @@ function DaftarDokumen() {
         {
           responseType: "blob", // agar respons dibaca sebagai file
           // headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -430,7 +429,7 @@ function DaftarDokumen() {
                         const res = await axios.get(
                           `${
                             import.meta.env.VITE_REACT_APP_API_BASE_URL
-                          }/admin/search/unit-kerja?q=${inputValue}`
+                          }/admin/search/unit-kerja?q=${inputValue}`,
                         );
 
                         const filtered = res.data.result;
@@ -486,7 +485,7 @@ function DaftarDokumen() {
                             import.meta.env.VITE_REACT_APP_API_BASE_URL
                           }/barjas/get/sub-kegiatan/search?q=${inputValue}&indukUnitKerjaId=${
                             user[0]?.unitKerja_profile?.id
-                          }`
+                          }`,
                         );
 
                         const filtered = res.data.result;
@@ -639,7 +638,7 @@ function DaftarDokumen() {
                                   day: "numeric",
                                   month: "short",
                                   year: "numeric",
-                                }
+                                },
                               )
                             : "-"}
                         </Td>
@@ -672,7 +671,7 @@ function DaftarDokumen() {
                                     (total, barja) =>
                                       total +
                                       (barja.harga || 0) * (barja.jumlah || 0),
-                                    0
+                                    0,
                                   )
                                   .toLocaleString("id-ID")
                               : "0"}
@@ -825,7 +824,8 @@ function DaftarDokumen() {
                                       value: formik.values.nomorSPId,
                                       label:
                                         dataSeed?.resultNomorSP?.find(
-                                          (v) => v.id === formik.values.nomorSPId
+                                          (v) =>
+                                            v.id === formik.values.nomorSPId,
                                         )?.nomorSurat || "",
                                     }
                                   : null
@@ -833,40 +833,43 @@ function DaftarDokumen() {
                               onChange={(selectedOption) => {
                                 formik.setFieldValue(
                                   "nomorSPId",
-                                  selectedOption?.value || null
+                                  selectedOption?.value || null,
                                 );
                                 if (selectedOption) {
                                   formik.setFieldValue("nomorSPManual", "");
-                                  formik.setFieldValue("isTulisManualSP", false);
+                                  formik.setFieldValue(
+                                    "isTulisManualSP",
+                                    false,
+                                  );
                                 }
                               }}
                               isDisabled={formik.values.isTulisManualSP}
-                        components={{
-                          DropdownIndicator: () => null, // Hilangkan tombol panah
-                          IndicatorSeparator: () => null, // Kalau mau sekalian hilangkan garis vertikal
-                        }}
-                        chakraStyles={{
-                          container: (provided) => ({
-                            ...provided,
-                            borderRadius: "6px",
-                          }),
-                          control: (provided) => ({
-                            ...provided,
-                            backgroundColor: "terang",
-                            border: "0px",
-                            height: "60px",
-                            _hover: {
-                              borderColor: "yellow.700",
-                            },
-                            minHeight: "40px",
-                          }),
-                          option: (provided, state) => ({
-                            ...provided,
-                            bg: state.isFocused ? "aset" : "white",
-                            color: state.isFocused ? "white" : "black",
-                          }),
-                        }}
-                              />{" "}
+                              components={{
+                                DropdownIndicator: () => null, // Hilangkan tombol panah
+                                IndicatorSeparator: () => null, // Kalau mau sekalian hilangkan garis vertikal
+                              }}
+                              chakraStyles={{
+                                container: (provided) => ({
+                                  ...provided,
+                                  borderRadius: "6px",
+                                }),
+                                control: (provided) => ({
+                                  ...provided,
+                                  backgroundColor: "terang",
+                                  border: "0px",
+                                  height: "60px",
+                                  _hover: {
+                                    borderColor: "yellow.700",
+                                  },
+                                  minHeight: "40px",
+                                }),
+                                option: (provided, state) => ({
+                                  ...provided,
+                                  bg: state.isFocused ? "aset" : "white",
+                                  color: state.isFocused ? "white" : "black",
+                                }),
+                              }}
+                            />{" "}
                             <Button
                               mt={4}
                               size="sm"
@@ -875,7 +878,10 @@ function DaftarDokumen() {
                               type="button"
                               onClick={() => {
                                 if (formik.values.isTulisManualSP) {
-                                  formik.setFieldValue("isTulisManualSP", false);
+                                  formik.setFieldValue(
+                                    "isTulisManualSP",
+                                    false,
+                                  );
                                   formik.setFieldValue("nomorSPManual", "");
                                   formik.setFieldValue("nomorSPId", null);
                                 } else {
@@ -900,7 +906,7 @@ function DaftarDokumen() {
                                   onChange={(e) => {
                                     formik.setFieldValue(
                                       "nomorSPManual",
-                                      e.target.value
+                                      e.target.value,
                                     );
                                     formik.setFieldValue("nomorSPId", null);
                                   }}
@@ -926,8 +932,9 @@ function DaftarDokumen() {
                                 try {
                                   const res = await axios.get(
                                     `${
-                                      import.meta.env.VITE_REACT_APP_API_BASE_URL
-                                    }/barjas/get/rekanan/search?q=${inputValue}`
+                                      import.meta.env
+                                        .VITE_REACT_APP_API_BASE_URL
+                                    }/barjas/get/rekanan/search?q=${inputValue}`,
                                   );
 
                                   const filtered = res.data.result;
@@ -939,7 +946,7 @@ function DaftarDokumen() {
                                 } catch (err) {
                                   console.error(
                                     "Failed to load options:",
-                                    err.message
+                                    err.message,
                                   );
                                   return [];
                                 }
@@ -957,11 +964,11 @@ function DaftarDokumen() {
                               onChange={(selectedOption) => {
                                 formik.setFieldValue(
                                   "rekananId",
-                                  selectedOption?.value ?? null
+                                  selectedOption?.value ?? null,
                                 );
                                 formik.setFieldValue(
                                   "rekananLabel",
-                                  selectedOption?.label ?? ""
+                                  selectedOption?.label ?? "",
                                 );
                               }}
                               onBlur={() =>
@@ -1003,7 +1010,7 @@ function DaftarDokumen() {
                               onClick={() =>
                                 formik.setFieldValue(
                                   "isTambahRekananBaru",
-                                  !formik.values.isTambahRekananBaru
+                                  !formik.values.isTambahRekananBaru,
                                 )
                               }
                             >
@@ -1024,7 +1031,7 @@ function DaftarDokumen() {
                                     onChange={(e) =>
                                       formik.setFieldValue(
                                         "namaRekananBaru",
-                                        e.target.value
+                                        e.target.value,
                                       )
                                     }
                                   />{" "}
@@ -1036,7 +1043,7 @@ function DaftarDokumen() {
                                     onClick={() =>
                                       tambahRekanan(
                                         formik.values.namaRekananBaru,
-                                        formik.setFieldValue
+                                        formik.setFieldValue,
                                       )
                                     }
                                   >
@@ -1061,10 +1068,11 @@ function DaftarDokumen() {
                                 try {
                                   const res = await axios.get(
                                     `${
-                                      import.meta.env.VITE_REACT_APP_API_BASE_URL
+                                      import.meta.env
+                                        .VITE_REACT_APP_API_BASE_URL
                                     }/barjas/get/sub-kegiatan/search?q=${inputValue}&indukUnitKerjaId=${
                                       user[0]?.unitKerja_profile?.id
-                                    }`
+                                    }`,
                                   );
 
                                   const filtered = res.data.result;
@@ -1076,7 +1084,7 @@ function DaftarDokumen() {
                                 } catch (err) {
                                   console.error(
                                     "Failed to load options:",
-                                    err.message
+                                    err.message,
                                   );
                                   return [];
                                 }
@@ -1095,11 +1103,11 @@ function DaftarDokumen() {
                               onChange={(selectedOption) => {
                                 formik.setFieldValue(
                                   "subKegPerId",
-                                  selectedOption?.value ?? null
+                                  selectedOption?.value ?? null,
                                 );
                                 formik.setFieldValue(
                                   "subKegPerLabel",
-                                  selectedOption?.label ?? ""
+                                  selectedOption?.label ?? "",
                                 );
                               }}
                               onBlur={() =>
@@ -1147,7 +1155,7 @@ function DaftarDokumen() {
                                 (val) => ({
                                   value: val.id,
                                   label: `${val.akun}`,
-                                })
+                                }),
                               )}
                               placeholder="Pilih Akun Belanja"
                               focusBorderColor="red"
@@ -1158,7 +1166,8 @@ function DaftarDokumen() {
                                       label:
                                         dataSeed?.resultAkunBelanja?.find(
                                           (v) =>
-                                            v.id === formik.values.akunBelanjaId
+                                            v.id ===
+                                            formik.values.akunBelanjaId,
                                         )?.akun || "",
                                     }
                                   : null
@@ -1166,7 +1175,7 @@ function DaftarDokumen() {
                               onChange={(selectedOption) => {
                                 formik.setFieldValue(
                                   "akunBelanjaId",
-                                  selectedOption?.value ?? null
+                                  selectedOption?.value ?? null,
                                 );
                               }}
                               onBlur={() =>
@@ -1235,9 +1244,7 @@ function DaftarDokumen() {
                       <HStack spacing={3}>
                         <Button
                           type="button"
-                          onClick={() =>
-                            handleCloseModal(formik.resetForm)
-                          }
+                          onClick={() => handleCloseModal(formik.resetForm)}
                           variant="ghost"
                           colorScheme="gray"
                         >
@@ -1305,7 +1312,7 @@ function DaftarDokumen() {
                                   day: "numeric",
                                   month: "long",
                                   year: "numeric",
-                                }
+                                },
                               )
                             : "-"}
                         </Text>
@@ -1342,7 +1349,7 @@ function DaftarDokumen() {
                                   (total, barja) =>
                                     total +
                                     (barja.harga || 0) * (barja.jumlah || 0),
-                                  0
+                                  0,
                                 )
                                 .toLocaleString("id-ID")
                             : "0"}

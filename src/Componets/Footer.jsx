@@ -24,7 +24,7 @@ function Footer() {
     <>
       <Box bgColor={"primary"} zIndex={1001}>
         <Container py={"50px"} maxW={"1280px"}>
-          <Image w={"350px"} src={LogoPutih} />
+          {/* <Image w={"350px"} src={LogoPutih} /> */}
           <Box color={"white"} mt={"60px"}>
             <SimpleGrid columns={3} minChildWidth="200px">
               <Flex>
@@ -39,8 +39,7 @@ function Footer() {
                     ALamat:
                   </Text>
                   <Text fontSize={"14px"} fontWeight={300} me={"10px"}>
-                    Komplek Perkantoran Jl. Kusuma Bangsa KM. 05 Gedung A. Lt.2
-                    Kav. 1 Kav.1,Tanah Grogot,Paser,Kalimantan Timur 76251
+                    alamat
                   </Text>
                 </Box>
               </Flex>{" "}
@@ -56,7 +55,7 @@ function Footer() {
                     Email:
                   </Text>
                   <Text fontSize={"14px"} fontWeight={300} me={"10px"}>
-                    dinkespaser.kaltim@gmail.com
+                    email
                   </Text>
                 </Box>
               </Flex>{" "}
@@ -72,7 +71,7 @@ function Footer() {
                     Instagram:
                   </Text>
                   <Text fontSize={"14px"} fontWeight={300} me={"10px"}>
-                    dinkespaserkab
+                    ig
                   </Text>
                 </Box>
               </Flex>

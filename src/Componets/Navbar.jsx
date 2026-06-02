@@ -38,7 +38,17 @@ import {
   AccordionIcon,
   SimpleGrid,
 } from "@chakra-ui/react";
-import { FaRoute, FaBars, FaSignOutAlt, FaMoon, FaSun, FaPlane, FaUser, FaBuilding, FaCog } from "react-icons/fa";
+import {
+  FaRoute,
+  FaBars,
+  FaSignOutAlt,
+  FaMoon,
+  FaSun,
+  FaPlane,
+  FaUser,
+  FaBuilding,
+  FaCog,
+} from "react-icons/fa";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { BiWallet } from "react-icons/bi";
 import { BsHouseDoor, BsStar, BsEnvelope } from "react-icons/bs";
@@ -49,6 +59,7 @@ import LogoPena from "../assets/penaLogo.png";
 import LogoAset from "../assets/asetLogo.png";
 import LogoPegawai from "../assets/pegawaiLogo.png";
 import LogoPerencanaan from "../assets/perencanaanLogo.png";
+import LogoUtama from "../assets/logo JDB.png";
 import {
   selectIsAuthenticated,
   userRedux,
@@ -88,7 +99,6 @@ const menuData = [
       { label: "Daftar Perjalanan", path: "/perjalanan/daftar" },
       { label: "Kwitansi Global", path: "/perjalanan/kwitansi-global" },
       { label: "Rekap Perjalanan", path: "/perjalanan/rekap" },
-      { label: "Perjalanan Kepala Dinas", path: "/perjalanan/kalender-kadis" },
     ],
   },
   {
@@ -123,16 +133,7 @@ const menuData = [
   //     { label: "Usulan Pegawai", path: "/kepegawaian/usulan" },
   //   ],
   // },
-  {
-    title: "Kepala Dinas",
-    icon: FaUser,
-    pathPrefix: "/kepala-dinas",
-    items: [
-      { label: "Perjalanan", path: "/kepala-dinas/perjalanan-kadis" },
-      { label: "Daftar Perjalanan", path: "/kepala-dinas/daftar-kadis" },
-      { label: "Template Surat Tugas", path: "/kepala-dinas/template-kadis" },
-    ],
-  },
+
   {
     title: "Unit Kerja",
     icon: FaBuilding,
@@ -144,7 +145,7 @@ const menuData = [
       { label: "Template Surat", path: "/unit-kerja/template" },
       { label: "Sub Kegiatan", path: "/unit-kerja/sub-kegiatan" },
       { label: "Tujuan Dalam Kota", path: "/unit-kerja/dalam-kota" },
-      {label:"Template BPD", path:"/unit-kerja/template-bpd"}
+      { label: "Template BPD", path: "/unit-kerja/template-bpd" },
     ],
   },
   {
@@ -221,7 +222,7 @@ function Navbar() {
         }`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       if (response.data?.result?.profilePic) {
         setProfilePic(response.data.result.profilePic);
@@ -284,7 +285,7 @@ function Navbar() {
         `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/notifikasi/get`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       // PENTING: SELALU update count dengan nilai dari backend (sumber kebenaran)
@@ -340,7 +341,7 @@ function Navbar() {
     // Validasi: Pastikan environment variable sudah diset (penting untuk produksi)
     if (!socketUrl) {
       console.error(
-        "⚠️ VITE_REACT_APP_API_BASE_URL tidak diset! Socket.io tidak dapat terhubung."
+        "⚠️ VITE_REACT_APP_API_BASE_URL tidak diset! Socket.io tidak dapat terhubung.",
       );
       return; // Jangan inisialisasi socket jika URL tidak ada
     }
@@ -348,7 +349,7 @@ function Navbar() {
     // Peringatan jika masih menggunakan localhost di produksi
     if (socketUrl.includes("localhost") && import.meta.env.PROD) {
       console.warn(
-        "⚠️ PERINGATAN: Menggunakan localhost di produksi! Pastikan environment variable sudah diset dengan benar."
+        "⚠️ PERINGATAN: Menggunakan localhost di produksi! Pastikan environment variable sudah diset dengan benar.",
       );
     }
 
@@ -691,7 +692,7 @@ function Navbar() {
             >
               {/* Logo dan Brand */}
               <Flex gap={3} alignItems="center" flexShrink={0}>
-                <Box
+                {/* <Box
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
@@ -699,11 +700,9 @@ function Navbar() {
                   h="32px"
                 >
                   <Image height="100%" src={LogoPena} alt="Logo Pena" />
-                </Box>
+                </Box> */}
                 <Box
-                  w="48px"
-                  h="48px"
-                
+                  h="58px"
                   borderRadius="md"
                   display="flex"
                   alignItems="center"
@@ -711,9 +710,13 @@ function Navbar() {
                   flexShrink={0}
                   p={2}
                 >
-                  <Image height="100%" src={Logo} alt="Logo Dinas Kesehatan" />
+                  <Image
+                    height="100%"
+                    src={LogoUtama}
+                    alt="Logo Dinas Kesehatan"
+                  />
                 </Box>
-                <Box display={{ base: "none", sm: "block" }}>
+                {/* <Box display={{ base: "none", sm: "block" }}>
                   <Text
                     color="gray.800"
                     fontSize={{ base: "16px", md: "18px" }}
@@ -731,7 +734,7 @@ function Navbar() {
                   >
                     Kabupaten Paser
                   </Text>
-                </Box>
+                </Box> */}
               </Flex>
             </Flex>
 
@@ -751,7 +754,13 @@ function Navbar() {
             </Box>
 
             {/* Right Section: User Menu (Desktop) dan Hamburger (Mobile) */}
-            <HStack spacing={3} flexShrink={0} position="relative" zIndex={1} ml="auto">
+            <HStack
+              spacing={3}
+              flexShrink={0}
+              position="relative"
+              zIndex={1}
+              ml="auto"
+            >
               {/* Color Mode Toggle - Hidden on mobile */}
               <IconButton
                 display={{ base: "none", lg: "flex" }}
@@ -1011,7 +1020,7 @@ function Navbar() {
                                   {notif.timestamp && (
                                     <Text color="gray.500" fontSize="xs">
                                       {new Date(notif.timestamp).toLocaleString(
-                                        "id-ID"
+                                        "id-ID",
                                       )}
                                     </Text>
                                   )}
@@ -1117,32 +1126,42 @@ function Navbar() {
                         bgGradient: "linear(to-r, primary, primaryGelap)",
                       }}
                     >
-                      <Box px={4} py={2} bg="gray.50" borderBottom="1px solid" borderColor="gray.100">
+                      <Box
+                        px={4}
+                        py={2}
+                        bg="gray.50"
+                        borderBottom="1px solid"
+                        borderColor="gray.100"
+                      >
                         <Text fontSize="11px" color="gray.500">
                           Penomoran:{" "}
                           <Text
                             as="span"
                             color={
-                              user[0]?.unitKerja_profile?.indukUnitKerja?.penomoran === "aktif"
+                              user[0]?.unitKerja_profile?.indukUnitKerja
+                                ?.penomoran === "aktif"
                                 ? "green.600"
                                 : "gray.500"
                             }
                             fontWeight="500"
                           >
-                            {user[0]?.unitKerja_profile?.indukUnitKerja?.penomoran || "-"}
+                            {user[0]?.unitKerja_profile?.indukUnitKerja
+                              ?.penomoran || "-"}
                           </Text>
                           {" · "}
                           Keuangan:{" "}
                           <Text
                             as="span"
                             color={
-                              user[0]?.unitKerja_profile?.indukUnitKerja?.keuangan === "aktif"
+                              user[0]?.unitKerja_profile?.indukUnitKerja
+                                ?.keuangan === "aktif"
                                 ? "green.600"
                                 : "gray.500"
                             }
                             fontWeight="500"
                           >
-                            {user[0]?.unitKerja_profile?.indukUnitKerja?.keuangan || "-"}
+                            {user[0]?.unitKerja_profile?.indukUnitKerja
+                              ?.keuangan || "-"}
                           </Text>
                         </Text>
                       </Box>
@@ -1215,7 +1234,7 @@ function Navbar() {
                           Kepegawaian
                         </MenuItem>
                       </Link>
-                      <Link to={"/perencanaan"}>
+                      {/* <Link to={"/perencanaan"}>
                         <MenuItem
                           icon={<Image h={"20px"} src={LogoPerencanaan} />}
                           _hover={{
@@ -1228,7 +1247,7 @@ function Navbar() {
                         >
                           Perencanaan
                         </MenuItem>
-                      </Link>
+                      </Link> */}
                       <Box px={2} py={1}>
                         <Box
                           as="hr"
@@ -1422,32 +1441,42 @@ function Navbar() {
                 </Box>
 
                 {/* Penomoran & Keuangan */}
-                <Box px={4} py={2} bg={boxBg} borderBottom="1px solid" borderColor={borderColor}>
+                <Box
+                  px={4}
+                  py={2}
+                  bg={boxBg}
+                  borderBottom="1px solid"
+                  borderColor={borderColor}
+                >
                   <Text fontSize="xs" color={textColorLight}>
                     Penomoran:{" "}
                     <Text
                       as="span"
                       color={
-                        user[0]?.unitKerja_profile?.indukUnitKerja?.penomoran === "aktif"
+                        user[0]?.unitKerja_profile?.indukUnitKerja
+                          ?.penomoran === "aktif"
                           ? "green.500"
                           : undefined
                       }
                       fontWeight="500"
                     >
-                      {user[0]?.unitKerja_profile?.indukUnitKerja?.penomoran || "-"}
+                      {user[0]?.unitKerja_profile?.indukUnitKerja?.penomoran ||
+                        "-"}
                     </Text>
                     {" · "}
                     Keuangan:{" "}
                     <Text
                       as="span"
                       color={
-                        user[0]?.unitKerja_profile?.indukUnitKerja?.keuangan === "aktif"
+                        user[0]?.unitKerja_profile?.indukUnitKerja?.keuangan ===
+                        "aktif"
                           ? "green.500"
                           : undefined
                       }
                       fontWeight="500"
                     >
-                      {user[0]?.unitKerja_profile?.indukUnitKerja?.keuangan || "-"}
+                      {user[0]?.unitKerja_profile?.indukUnitKerja?.keuangan ||
+                        "-"}
                     </Text>
                   </Text>
                 </Box>
@@ -1609,7 +1638,7 @@ function Navbar() {
                       ? index.length > 0
                         ? index[0]
                         : -1
-                      : index
+                      : index,
                   );
                 }}
               >

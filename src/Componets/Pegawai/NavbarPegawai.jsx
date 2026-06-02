@@ -65,43 +65,57 @@ import { useColorModeValues } from "../../Style/colorModeValues";
 
 // Data menu untuk mapping
 const menuData = [
+  // {
+  //   title: "ASN",
+  //   icon: HiOutlineUsers,
+  //   pathPrefix: "/kepegawaian-ASN",
+  //   items: [
+  //     { label: "Usulan Naik Pangkat", path: "/kepegawaian-ASN/naik-golongan" },
+  //     { label: "Usulan Naik Jenjang", path: "/kepegawaian-ASN/naik-jenjang" },
+  //     { label: "Data Saya", path: "/kepegawaian/profile" },
+  //     // { label: "Laporan PJPL", path: "/kepegawaian/daftar-laporan-pjpl" },
+  //     { label: "Laporan PJPL", path: "/kepegawaian-ASN/atasan/daftar-kontrak" },
+  //   ],
+  // },
   {
-    title: "ASN",
+    title: "Presensi",
     icon: HiOutlineUsers,
-    pathPrefix: "/kepegawaian-ASN",
-    items: [
-      { label: "Usulan Naik Pangkat", path: "/kepegawaian-ASN/naik-golongan" },
-      { label: "Usulan Naik Jenjang", path: "/kepegawaian-ASN/naik-jenjang" },
-      { label: "Data Saya", path: "/kepegawaian/profile" },
-      // { label: "Laporan PJPL", path: "/kepegawaian/daftar-laporan-pjpl" },
-      { label: "Laporan PJPL", path: "/kepegawaian-ASN/atasan/daftar-kontrak" },
-    ],
+    pathPrefix: "/presensi",
+    items: [{ label: "presensi", path: "/presensi/daftar-presensi" }],
   },
   {
-    title: "PJPL",
+    title: "Payrol",
     icon: HiOutlineUsers,
-    pathPrefix: "/kepegawaian-PJPL",
-    items: [{ label: "Kinerja PJPL", path: "/kepegawaian-PJPL/kinerja-PJPL" }],
+    pathPrefix: "/kepegawaian-payrol",
+    items: [{ label: "payrol", path: "/kepegawaian-payrol/daftar" }],
   },
+  // {
+  //   title: "PJPL",
+  //   icon: HiOutlineUsers,
+  //   pathPrefix: "/kepegawaian-PJPL",
+  //   items: [{ label: "Kinerja PJPL", path: "/kepegawaian-PJPL/kinerja-PJPL" }],
+  // },
   {
     title: "Administrator",
     icon: HiOutlineUsers,
     pathPrefix: "/admin-pegawai",
     items: [
       { label: "Daftar Pegawai", path: "/admin-pegawai/daftar-pegawai" },
-      { label: "Statistik Pegawai", path: "/admin-pegawai/statistik-pegawai" },
-      {
-        label: "Pejabat Verifikator",
-        path: "/admin-pegawai/pejabat-verifikator",
-      },
+      { label: "Daftar Payroll", path: "/admin-pegawai/daftar-payroll" },
+      { label: "Pengaturan", path: "/admin-pegawai/pengaturan-payroll" },
+      // { label: "Statistik Pegawai", path: "/admin-pegawai/statistik-pegawai" },
+      // {
+      //   label: "Pejabat Verifikator",
+      //   path: "/admin-pegawai/pejabat-verifikator",
+      // },
 
-      { label: "Kontrak PJPL", path: "/admin-pegawai/kontrak-PJPL" },
+      // { label: "Kontrak PJPL", path: "/admin-pegawai/kontrak-PJPL" },
 
-      {
-        label: "Daftar Naik Jenjang",
-        path: "/admin-pegawai/daftar-naik-jenjang",
-      },
-      { label: "Pengaturan", path: "/admin-pegawai/laporan-usulan-pegawai" },
+      // {
+      //   label: "Daftar Naik Jenjang",
+      //   path: "/admin-pegawai/daftar-naik-jenjang",
+      // },
+      // { label: "Pengaturan", path: "/admin-pegawai/laporan-usulan-pegawai" },
     ],
   },
 ];
@@ -155,7 +169,7 @@ function NavbarPegawai() {
     // Validasi: Pastikan environment variable sudah diset (penting untuk produksi)
     if (!socketUrl) {
       console.error(
-        "⚠️ VITE_REACT_APP_API_BASE_URL tidak diset! Socket.io tidak dapat terhubung."
+        "⚠️ VITE_REACT_APP_API_BASE_URL tidak diset! Socket.io tidak dapat terhubung.",
       );
       return; // Jangan inisialisasi socket jika URL tidak ada
     }
@@ -163,7 +177,7 @@ function NavbarPegawai() {
     // Peringatan jika masih menggunakan localhost di produksi
     if (socketUrl.includes("localhost") && import.meta.env.PROD) {
       console.warn(
-        "⚠️ PERINGATAN: Menggunakan localhost di produksi! Pastikan environment variable sudah diset dengan benar."
+        "⚠️ PERINGATAN: Menggunakan localhost di produksi! Pastikan environment variable sudah diset dengan benar.",
       );
     }
 
@@ -420,7 +434,7 @@ function NavbarPegawai() {
               zIndex={1}
             >
               {/* Logo dan Brand */}
-              <Flex gap={3} alignItems="center" flexShrink={0}>
+              {/* <Flex gap={3} alignItems="center" flexShrink={0}>
                 <Box
                   display="flex"
                   alignItems="center"
@@ -461,7 +475,7 @@ function NavbarPegawai() {
                     Kabupaten Paser
                   </Text>
                 </Box>
-              </Flex>
+              </Flex> */}
             </Flex>
 
             {/* Center Section: Menu Navigation - Hidden on mobile, positioned absolutely in center */}
@@ -480,7 +494,13 @@ function NavbarPegawai() {
             </Box>
 
             {/* Right Section: User Menu (Desktop) dan Hamburger (Mobile) */}
-            <HStack spacing={3} flexShrink={0} position="relative" zIndex={1} ml="auto">
+            <HStack
+              spacing={3}
+              flexShrink={0}
+              position="relative"
+              zIndex={1}
+              ml="auto"
+            >
               {/* Color Mode Toggle - Hidden on mobile */}
               <IconButton
                 display={{ base: "none", lg: "flex" }}
@@ -968,7 +988,7 @@ function NavbarPegawai() {
                       ? index.length > 0
                         ? index[0]
                         : -1
-                      : index
+                      : index,
                   );
                 }}
               >

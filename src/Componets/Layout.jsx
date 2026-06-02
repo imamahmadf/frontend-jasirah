@@ -16,7 +16,7 @@ function Layout({ children, seoProps, noPaddingTop = false }) {
 
   // Default SEO props untuk Dinkes
   const defaultSEO = {
-    title: "Dinas Kesehatan - Sistem Informasi Perjalanan Dinas",
+    title: "JDB`",
     description:
       "Sistem informasi perjalanan dinas dan pengelolaan aset Dinas Kesehatan",
     url: window.location.href,

@@ -2,10 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import LayoutAset from "../../Componets/Aset/LayoutAset";
 import ReactPaginate from "react-paginate";
-import { BsFileEarmarkArrowDown } from "react-icons/bs";
 import "../../Style/pagination.css";
-import { Link, useHistory } from "react-router-dom";
-import Foto from "../../assets/add_photo.png";
+import FotoPlaceholder from "../../assets/add_photo.png";
 import {
   Box,
   Text,
@@ -52,15 +50,13 @@ import { formatRupiah, parseRupiah } from "../../utils/formatRupiah";
 
 function PersediaanMasuk() {
   const [DataPersediaan, setDataPersediaan] = useState([]);
-  const history = useHistory();
-  const [dataSeed, setDataSeed] = useState(null);
   const [page, setPage] = useState(0);
-  const [limit, setLimit] = useState(50);
   const [pages, setPages] = useState(0);
-  const [rows, setRows] = useState(0);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(FotoPlaceholder);
 
   const toast = useToast();
-  const { colorMode, toggleColorMode } = useColorMode();
+  const { colorMode } = useColorMode();
   const [spesifikasi, setSpesifikasi] = useState("");
   const [jumlah, setJumlah] = useState(0);
   const [harga, setHarga] = useState(0);
@@ -68,7 +64,6 @@ function PersediaanMasuk() {
   const [keterangan, setKeterangan] = useState("");
   const [persediaanId, setPersediaanId] = useState(0);
   const user = useSelector(userRedux);
-  const role = useSelector(selectRole);
   const {
     isOpen: isTambahOpen,
     onOpen: onTambahOpen,
@@ -93,6 +88,34 @@ function PersediaanMasuk() {
     }
   };
 
+  const handleFile = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size / 1024 > 2048) {
+      toast({
+        title: "Error!",
+        description: "Ukuran file maksimal 2MB",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const resetForm = () => {
+    setSpesifikasi("");
+    setJumlah(0);
+    setHarga(0);
+    setTanggal("");
+    setKeterangan("");
+    setPersediaanId(0);
+    setSelectedFile(null);
+    setPreviewUrl(FotoPlaceholder);
+  };
+
   async function fetchPersediaanMasuk() {
     await axios
       .get(
@@ -102,40 +125,40 @@ function PersediaanMasuk() {
       )
       .then((res) => {
         setDataPersediaan(res.data.result);
-        setPage(res.data.page);
         setPages(res.data.totalPage);
-        setRows(res.data.totalRows);
-        setDataSeed(res.data.resultPersediaan);
-        console.log(res.data);
       })
       .catch((err) => {
         console.error(err);
       });
   }
   const tambahPersediaan = () => {
+    const formData = new FormData();
+    formData.append("persediaanId", persediaanId);
+    formData.append("spesifikasi", spesifikasi);
+    formData.append("jumlah", jumlah);
+    formData.append("harga", harga);
+    formData.append("tanggal", tanggal);
+    formData.append("keterangan", keterangan);
+    formData.append("unitKerjaId", user[0]?.unitKerja_profile?.id);
+    if (selectedFile) {
+      formData.append("pic", selectedFile);
+    }
+
     axios
       .post(
         `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/persediaan/post/masuk`,
-        {
-          persediaanId,
-          spesifikasi,
-          jumlah,
-          harga,
-          tanggal,
-          keterangan,
-          unitKerjaId: user[0]?.unitKerja_profile?.id,
-        }
+        formData
       )
       .then((res) => {
-        console.log(res.status, res.data, "tessss");
         toast({
           title: "Berhasil!",
-          description: "Pengajuan berhasil dikirim.",
+          description: "Stok masuk berhasil disimpan.",
           status: "success",
           duration: 5000,
           isClosable: true,
         });
-        // fetchDataPersediaan();
+        resetForm();
+        fetchPersediaanMasuk();
         onTambahClose();
       })
       .catch((err) => {
@@ -182,6 +205,7 @@ function PersediaanMasuk() {
                   <Th>spesifikasi</Th>
                   <Th>jumlah</Th>
                   <Th>harga satuan</Th>
+                  <Th>foto</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -194,6 +218,19 @@ function PersediaanMasuk() {
                     <Td>{item?.spesifikasi}</Td>
                     <Td>{item?.jumlah}</Td>
                     <Td>{item?.hargaSatuan}</Td>
+                    <Td>
+                      {item?.foto ? (
+                        <Image
+                          src={`${import.meta.env.VITE_REACT_APP_API_BASE_URL}${item.foto}`}
+                          alt="foto persediaan"
+                          boxSize="50px"
+                          objectFit="cover"
+                          borderRadius="md"
+                        />
+                      ) : (
+                        "-"
+                      )}
+                    </Td>
                   </Tr>
                 ))}
               </Tbody>
@@ -356,7 +393,26 @@ function PersediaanMasuk() {
                       onChange={(e) =>
                         handleSubmitChange("keterangan", e.target.value)
                       }
-                      placeholder="Contoh: 5000"
+                      placeholder="Contoh: Pembelian rutin"
+                    />
+                  </FormControl>
+                  <FormControl my={"30px"}>
+                    <FormLabel fontSize={"24px"}>Foto Barang</FormLabel>
+                    <Center>
+                      <Image
+                        src={previewUrl}
+                        alt="preview"
+                        boxSize="120px"
+                        objectFit="cover"
+                        borderRadius="md"
+                        mb={3}
+                      />
+                    </Center>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      bgColor={"terang"}
+                      onChange={handleFile}
                     />
                   </FormControl>
                 </SimpleGrid>
