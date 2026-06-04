@@ -8,6 +8,7 @@ import ReactPaginate from "react-paginate";
 
 import "../../Style/pagination.css";
 import { useHistory } from "react-router-dom";
+import { BsFileEarmarkExcel } from "react-icons/bs";
 import Foto from "../../assets/add_photo.png";
 import {
   Box,
@@ -32,6 +33,7 @@ import {
   Heading,
   SimpleGrid,
   Th,
+  Spacer,
   Td,
   Flex,
   Textarea,
@@ -49,7 +51,7 @@ import { useDisclosure } from "@chakra-ui/react";
 function DaftarPengeluaran() {
   const [dataPengeluaran, setDataPengeluaran] = useState([]);
   const history = useHistory();
-
+  const token = localStorage.getItem("token");
   const [dataSeed, setDataSeed] = useState(null);
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(50);
@@ -104,6 +106,31 @@ function DaftarPengeluaran() {
     pic: null,
     fotoExisting: "",
   };
+
+  const downloadExcelPegawai = async (unitKerjaId = null) => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/pengeluaran/get/download`,
+        {
+          params: unitKerjaId ? { unitKerjaId } : {},
+          responseType: "blob", // agar respons dibaca sebagai file
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "data-pegawai.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Gagal mengunduh file Excel:", error);
+      alert("Terjadi kesalahan saat mengunduh file.");
+    }
+  };
+
   const tambahRekanan = (namaRekananBaru, setFieldValue) => {
     axios
       .post(
@@ -138,8 +165,8 @@ function DaftarPengeluaran() {
     deskripsi: Yup.string().required("Deskripsi wajib diisi"),
     indukUnitKerjaId: Yup.mixed()
       .nullable()
-      .required("Induk unit kerja wajib dipilih"),
-    unitKerjaId: Yup.mixed().nullable().required("Unit kerja wajib dipilih"),
+      .required("Unit Usaha wajib dipilih"),
+    unitKerjaId: Yup.mixed().nullable().required("Proyek wajib dipilih"),
     pegawaiId: Yup.mixed().nullable().required("Pegawai wajib dipilih"),
     metodePembayaranId: Yup.mixed()
       .nullable()
@@ -242,7 +269,7 @@ function DaftarPengeluaran() {
             label: val.indukUnitKerja,
           }));
       } catch (fallbackErr) {
-        console.error("Failed to load induk unit kerja:", fallbackErr.message);
+        console.error("Failed to load Unit Usaha:", fallbackErr.message);
         return [];
       }
     }
@@ -437,62 +464,261 @@ function DaftarPengeluaran() {
     rekananFilterId,
   ]);
 
+  const formatTanggal = (d) =>
+    d
+      ? new Date(d).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "-";
+
+  const formatRupiah = (n) => `Rp ${Number(n || 0).toLocaleString("id-ID")}`;
+
+  const apiBaseUrl = import.meta.env.VITE_REACT_APP_API_BASE_URL;
+
+  const InfoRow = ({ label, value, valueColor }) => (
+    <Flex justify="space-between" align="flex-start" py={1.5} gap={3}>
+      <Text fontSize="sm" color="gray.500" flexShrink={0}>
+        {label}
+      </Text>
+      <Text
+        fontSize="sm"
+        fontWeight="semibold"
+        textAlign="right"
+        color={valueColor}
+        flex={1}
+      >
+        {value}
+      </Text>
+    </Flex>
+  );
+
+  const renderMobileCards = () => {
+    if (isLoading) {
+      return Array.from({ length: 3 }).map((_, idx) => (
+        <Box
+          key={idx}
+          mb={4}
+          p={4}
+          borderRadius="lg"
+          border="1px solid"
+          borderColor="gray.200"
+          bg={colorMode === "dark" ? "gray.700" : "white"}
+        >
+          <Skeleton height="24px" mb={3} />
+          <Skeleton height="16px" mb={2} />
+          <Skeleton height="16px" mb={2} />
+          <Skeleton height="40px" mt={4} />
+        </Box>
+      ));
+    }
+
+    if (!dataPengeluaran?.length) {
+      return (
+        <Box
+          py={10}
+          px={4}
+          textAlign="center"
+          bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+          borderRadius="md"
+        >
+          <VStack spacing={2}>
+            <Text fontSize="md" color="gray.500">
+              Tidak ada data pengeluaran
+            </Text>
+            <Text fontSize="sm" color="gray.400">
+              Klik tombol &quot;Tambah&quot; untuk menambahkan data baru
+            </Text>
+          </VStack>
+        </Box>
+      );
+    }
+
+    return dataPengeluaran.map((item) => {
+      const rowStyle = getRowJatuhTempoStyle(item);
+      const statusLabel =
+        item?.statusPembayaran?.nama || item?.statusPembayaran?.status || "-";
+
+      return (
+        <Box
+          key={item.id}
+          mb={4}
+          borderRadius="lg"
+          border="1px solid"
+          borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+          overflow="hidden"
+          bg={rowStyle.bg || (colorMode === "dark" ? "gray.700" : "white")}
+          boxShadow="sm"
+        >
+          <Box px={4} py={3}>
+            <Flex justify="space-between" align="flex-start" gap={3} mb={2}>
+              <Box flex={1} minW={0}>
+                <Text fontSize="lg" fontWeight="bold" color="green.600">
+                  {formatRupiah(item?.nominal)}
+                </Text>
+                <Text fontSize="sm" color="gray.600" mt={1} noOfLines={2}>
+                  {item?.deskripsi || "-"}
+                </Text>
+              </Box>
+              <Badge colorScheme="green" variant="subtle" flexShrink={0}>
+                {statusLabel}
+              </Badge>
+            </Flex>
+
+            <HStack spacing={2} flexWrap="wrap" mb={3}>
+              <Badge colorScheme="purple" variant="subtle" fontSize="xs">
+                {item?.metodePembayaran?.nama ||
+                  item?.metodePembayaran?.metode ||
+                  "-"}
+              </Badge>
+              <Badge colorScheme="blue" variant="subtle" fontSize="xs">
+                {item?.jenisPengeluaran?.nama ||
+                  item?.jenisPengeluaran?.jenis ||
+                  "-"}
+              </Badge>
+            </HStack>
+
+            <InfoRow label="Tanggal" value={formatTanggal(item?.tanggal)} />
+            <InfoRow
+              label="Jatuh Tempo"
+              value={formatTanggal(item?.jatuhTempo)}
+            />
+            <InfoRow
+              label="Proyek"
+              value={item?.daftarUnitKerja?.unitKerja || "-"}
+            />
+            <InfoRow label="Pegawai" value={item?.pegawai?.nama || "-"} />
+            <InfoRow label="Rekanan" value={item?.rekanan?.nama || "-"} />
+
+            {item?.foto && (
+              <Box mt={3}>
+                <Text fontSize="xs" color="gray.500" mb={2}>
+                  Foto
+                </Text>
+                <Image
+                  src={`${apiBaseUrl}${item.foto}`}
+                  alt="foto pengeluaran"
+                  boxSize="72px"
+                  objectFit="cover"
+                  borderRadius="8px"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  cursor="pointer"
+                  onClick={() => {
+                    setPreviewFotoUrl(`${apiBaseUrl}${item.foto}`);
+                    onPreviewFotoOpen();
+                  }}
+                />
+              </Box>
+            )}
+
+            <Button
+              w="full"
+              mt={4}
+              size="sm"
+              variant="outline"
+              colorScheme="blue"
+              onClick={() => openEditModal(item)}
+            >
+              Edit
+            </Button>
+          </Box>
+        </Box>
+      );
+    });
+  };
+
   return (
     <>
       <LayoutAset>
-        <Box bgColor={"secondary"} pb={"40px"} px={"30px"} pt={"30px"}>
+        <Box
+          bgColor={"secondary"}
+          pb={{ base: "20px", md: "40px" }}
+          px={{ base: "12px", md: "30px" }}
+          pt={{ base: "16px", md: "30px" }}
+        >
           <Box
-            style={{ overflowX: "auto" }}
             bgColor={"white"}
-            p={"30px"}
-            borderRadius={"10px"}
+            p={{ base: "16px", md: "30px" }}
+            borderRadius={{ base: "8px", md: "10px" }}
             bg={colorMode === "dark" ? "gray.800" : "white"}
             boxShadow="sm"
           >
             {/* Header */}
             <Flex
-              justify="space-between"
-              align="center"
-              mb={"30px"}
-              flexWrap="wrap"
+              direction={{ base: "column", md: "row" }}
+              align={{ base: "stretch", md: "center" }}
+              mb={{ base: 4, md: "30px" }}
               gap={4}
             >
               <VStack align="start" spacing={1}>
-                <Heading size="lg" color="gray.700">
+                <Heading
+                  size={{ base: "md", md: "lg" }}
+                  color={colorMode === "dark" ? "gray.100" : "gray.700"}
+                >
                   Daftar Pengeluaran
                 </Heading>
                 <Text fontSize="sm" color="gray.500">
                   Total: {rows} data
                 </Text>
               </VStack>
-              <HStack gap={3}>
-                <Button
-                  onClick={openTambahModal}
-                  variant={"primary"}
-                  px={"30px"}
-                  size="md"
-                  leftIcon={<Text fontSize="lg">+</Text>}
-                >
+              <Spacer />
+              <Button
+                onClick={openTambahModal}
+                variant={"primary"}
+                px={{ base: 4, md: "30px" }}
+                size={{ base: "sm", md: "md" }}
+                w={{ base: "full", md: "auto" }}
+                leftIcon={<Text fontSize="lg">+</Text>}
+              >
+                <Text as="span" display={{ base: "inline", md: "none" }}>
+                  Tambah
+                </Text>
+                <Text as="span" display={{ base: "none", md: "inline" }}>
                   Tambah Pengeluaran
-                </Button>
-              </HStack>
+                </Text>
+              </Button>{" "}
+              <Button
+                onClick={downloadExcelPegawai}
+                variant="outline"
+                leftIcon={<BsFileEarmarkExcel />}
+                borderColor={colorMode === "dark" ? "gray.600" : "gray.300"}
+                _hover={{
+                  bg: colorMode === "dark" ? "gray.700" : "gray.50",
+                }}
+                flex={"auto"}
+                maxW={"200px"}
+              >
+                {"Download Excel"}
+              </Button>
             </Flex>
 
-            <Divider mb={"30px"} />
+            <Divider mb={{ base: 4, md: "30px" }} />
 
             {/* Filter */}
-            <Box mb={"30px"}>
-              <Heading size="md" mb={"20px"} color="gray.700">
+            <Box mb={{ base: 4, md: "30px" }}>
+              <Heading
+                size={{ base: "sm", md: "md" }}
+                mb={{ base: 3, md: "20px" }}
+                color={colorMode === "dark" ? "gray.100" : "gray.700"}
+              >
                 Filter Pencarian
               </Heading>
-              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5}>
+              <SimpleGrid
+                columns={{ base: 1, md: 2, lg: 3 }}
+                spacing={{ base: 4, md: 5 }}
+              >
                 <FormControl>
-                  <FormLabel fontSize={"16px"} fontWeight="medium">
-                    Induk Unit Kerja
+                  <FormLabel
+                    fontSize={{ base: "sm", md: "16px" }}
+                    fontWeight="medium"
+                  >
+                    Unit Usaha
                   </FormLabel>
                   <AsyncSelect
                     loadOptions={loadIndukUnitKerjaOptions}
-                    placeholder="Ketik Nama Induk Unit Kerja"
+                    placeholder="Ketik Nama Unit Usaha"
                     onChange={(selectedOption) => {
                       setIndukUnitKerjaFilterId(selectedOption?.value || 0);
                     }}
@@ -524,7 +750,7 @@ function DaftarPengeluaran() {
 
                 <FormControl>
                   <FormLabel fontSize={"16px"} fontWeight="medium">
-                    Unit Kerja
+                    Proyek
                   </FormLabel>
                   <AsyncSelect
                     loadOptions={async (inputValue) => {
@@ -542,7 +768,7 @@ function DaftarPengeluaran() {
                         return [];
                       }
                     }}
-                    placeholder="Ketik Nama Unit Kerja"
+                    placeholder="Ketik Nama Proyek"
                     onChange={(selectedOption) => {
                       setUnitKerjaFilterId(selectedOption?.value || 0);
                     }}
@@ -857,12 +1083,19 @@ function DaftarPengeluaran() {
               )}
             </Box>
 
-            <Divider mb={"30px"} />
+            <Divider mb={{ base: 4, md: "30px" }} />
 
-            {/* Table */}
+            {/* Mobile: kartu daftar */}
+            <Box display={{ base: "block", md: "none" }} mb={4}>
+              {renderMobileCards()}
+            </Box>
+
+            {/* Desktop: tabel */}
             <Box
+              display={{ base: "none", md: "block" }}
               borderRadius="8px"
               overflow="hidden"
+              overflowX="auto"
               border="1px solid"
               borderColor="gray.200"
             >
@@ -879,7 +1112,7 @@ function DaftarPengeluaran() {
                       Deskripsi
                     </Th>
                     <Th fontWeight="bold" textTransform="capitalize">
-                      Unit Kerja
+                      Proyek
                     </Th>
                     <Th fontWeight="bold" textTransform="capitalize">
                       Pegawai
@@ -1060,10 +1293,13 @@ function DaftarPengeluaran() {
             </Box>
 
             <Box
-              mt={6}
+              mt={{ base: 4, md: 6 }}
               display="flex"
               justifyContent="center"
               alignItems="center"
+              overflowX="auto"
+              px={{ base: 0, md: 0 }}
+              w="full"
             >
               <ReactPaginate
                 previousLabel={"←"}
@@ -1087,9 +1323,17 @@ function DaftarPengeluaran() {
       </LayoutAset>
 
       {/* Modal Preview Foto */}
-      <Modal isOpen={isPreviewFotoOpen} onClose={onPreviewFotoClose} isCentered>
+      <Modal
+        isOpen={isPreviewFotoOpen}
+        onClose={onPreviewFotoClose}
+        isCentered
+        size={{ base: "full", md: "3xl" }}
+      >
         <ModalOverlay />
-        <ModalContent maxW="900px">
+        <ModalContent
+          maxW={{ base: "100%", md: "900px" }}
+          m={{ base: 0, md: 4 }}
+        >
           <ModalHeader>Preview Foto Pengeluaran</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
@@ -1114,9 +1358,16 @@ function DaftarPengeluaran() {
         onClose={() =>
           handleCloseModal(() => formikRefTambah.current?.resetForm())
         }
+        size={{ base: "full", md: "6xl" }}
+        scrollBehavior="inside"
       >
         <ModalOverlay />
-        <ModalContent borderRadius={0} maxWidth="1100px">
+        <ModalContent
+          borderRadius={{ base: 0, md: "md" }}
+          maxW={{ base: "100%", md: "1100px" }}
+          m={{ base: 0, md: 4 }}
+          maxH={{ base: "100vh", md: "90vh" }}
+        >
           <Formik
             innerRef={formikRefTambah}
             initialValues={
@@ -1186,14 +1437,14 @@ function DaftarPengeluaran() {
                 />
                 <ModalBody>
                   <Box>
-                    <HStack mb={6} spacing={3}>
+                    <HStack mb={{ base: 4, md: 6 }} spacing={3}>
                       <Box
                         bgColor={"aset"}
                         width={"4px"}
                         height={"30px"}
                         borderRadius="2px"
                       ></Box>
-                      <Heading size="lg" color={"aset"}>
+                      <Heading size={{ base: "md", md: "lg" }} color={"aset"}>
                         {selectedPengeluaran
                           ? "Edit Pengeluaran"
                           : "Tambah Pengeluaran"}
@@ -1202,8 +1453,8 @@ function DaftarPengeluaran() {
 
                     <SimpleGrid
                       columns={{ base: 1, md: 2 }}
-                      spacing={6}
-                      p={"10px"}
+                      spacing={{ base: 4, md: 6 }}
+                      p={{ base: 0, md: "10px" }}
                     >
                       <FormControl
                         isInvalid={
@@ -1311,18 +1562,18 @@ function DaftarPengeluaran() {
                         }
                       >
                         <FormLabel fontSize={"16px"} fontWeight="medium">
-                          Induk Unit Kerja
+                          Unit Usaha
                         </FormLabel>
                         <AsyncSelect
                           loadOptions={loadIndukUnitKerjaOptions}
-                          placeholder="Ketik Nama Induk Unit Kerja"
+                          placeholder="Ketik Nama Unit Usaha"
                           value={
                             formik.values.indukUnitKerjaId
                               ? {
                                   value: formik.values.indukUnitKerjaId,
                                   label:
                                     formik.values.indukUnitKerjaLabel ||
-                                    "Induk Unit Kerja",
+                                    "Unit Usaha",
                                 }
                               : null
                           }
@@ -1374,7 +1625,7 @@ function DaftarPengeluaran() {
                         }
                       >
                         <FormLabel fontSize={"16px"} fontWeight="medium">
-                          Unit Kerja
+                          Proyek
                         </FormLabel>
                         <AsyncSelect
                           loadOptions={async (inputValue) => {
@@ -1395,14 +1646,13 @@ function DaftarPengeluaran() {
                               return [];
                             }
                           }}
-                          placeholder="Ketik Nama Unit Kerja"
+                          placeholder="Ketik Nama Proyek"
                           value={
                             formik.values.unitKerjaId
                               ? {
                                   value: formik.values.unitKerjaId,
                                   label:
-                                    formik.values.unitKerjaLabel ||
-                                    "Unit Kerja",
+                                    formik.values.unitKerjaLabel || "Proyek",
                                 }
                               : null
                           }
@@ -1949,27 +2199,35 @@ function DaftarPengeluaran() {
                   </Box>
                 </ModalBody>
 
-                <ModalFooter pe={"30px"} pb={"30px"} pt={"20px"}>
-                  <HStack spacing={3}>
-                    <Button
-                      type="button"
-                      onClick={() => handleCloseModal(formik.resetForm)}
-                      variant="ghost"
-                      colorScheme="gray"
-                    >
-                      Batal
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant={"primary"}
-                      size="md"
-                      isLoading={formik.isSubmitting}
-                    >
-                      {selectedPengeluaran
-                        ? "Update Pengeluaran"
-                        : "Simpan Pengeluaran"}
-                    </Button>
-                  </HStack>
+                <ModalFooter
+                  pe={{ base: "16px", md: "30px" }}
+                  pb={{ base: "16px", md: "30px" }}
+                  pt={{ base: "12px", md: "20px" }}
+                  flexDirection={{ base: "column", md: "row" }}
+                  gap={3}
+                >
+                  <Button
+                    type="button"
+                    onClick={() => handleCloseModal(formik.resetForm)}
+                    variant="ghost"
+                    colorScheme="gray"
+                    w={{ base: "full", md: "auto" }}
+                    order={{ base: 2, md: 1 }}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant={"primary"}
+                    size="md"
+                    isLoading={formik.isSubmitting}
+                    w={{ base: "full", md: "auto" }}
+                    order={{ base: 1, md: 2 }}
+                  >
+                    {selectedPengeluaran
+                      ? "Update Pengeluaran"
+                      : "Simpan Pengeluaran"}
+                  </Button>
                 </ModalFooter>
               </form>
             )}

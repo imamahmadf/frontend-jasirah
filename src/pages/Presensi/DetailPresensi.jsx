@@ -53,6 +53,8 @@ function DetailPresensi() {
   const [modalUnitKerjaId, setModalUnitKerjaId] = useState("");
   const [unitKerjaList, setUnitKerjaList] = useState([]);
   const [loadingUnitKerja, setLoadingUnitKerja] = useState(false);
+  const [statusPresensiList, setStatusPresensiList] = useState([]);
+  const [loadingStatusPresensi, setLoadingStatusPresensi] = useState(false);
   const {
     isOpen: isModalPresensiOpen,
     onOpen: onOpenModalPresensi,
@@ -118,6 +120,30 @@ function DetailPresensi() {
     }));
   };
 
+  const getStatusPresensiId = (presensi) =>
+    presensi?.statusPresensiId ?? presensi?.statusPresensi?.id ?? "";
+
+  const getStatusLabel = (statusObj, presensi) => {
+    if (!statusObj || Object.keys(statusObj).length === 0) {
+      return presensi ? "Tercatat" : "Belum Presensi";
+    }
+    return (
+      statusObj?.namaStatus ||
+      statusObj?.status ||
+      statusObj?.nama ||
+      (presensi ? "Tercatat" : "")
+    );
+  };
+
+  const getUnitKerjaLabel = (presensi) => {
+    const uk = presensi?.daftarUnitKerja;
+    if (!uk) return "-";
+    const nama = uk?.unitKerja || uk?.nama || "";
+    const kode = uk?.kode || "";
+    if (nama && kode) return `${nama} (${kode})`;
+    return nama || kode || "-";
+  };
+
   const buildFormFromResult = (result = []) => {
     const initialForm = {};
     result.forEach((pegawai) => {
@@ -125,6 +151,7 @@ function DetailPresensi() {
       initialForm[pegawai?.id] = {
         jamMasuk: formatJamInput(presensi?.jamMasuk),
         jamPulang: formatJamInput(presensi?.jamPulang),
+        statusPresensiId: getStatusPresensiId(presensi),
       };
     });
     return initialForm;
@@ -162,6 +189,7 @@ function DetailPresensi() {
       [pegawaiId]: {
         jamMasuk: formatJamInput(presensi?.jamMasuk),
         jamPulang: formatJamInput(presensi?.jamPulang),
+        statusPresensiId: getStatusPresensiId(presensi),
       },
     }));
     setEditingByPegawai((prev) => ({ ...prev, [pegawaiId]: false }));
@@ -174,11 +202,15 @@ function DetailPresensi() {
     const form = formByPegawai[pegawaiId] || {};
     const jamMasukDate = mergeTanggalDanJam(tanggal, form.jamMasuk);
     const jamPulangDate = mergeTanggalDanJam(tanggal, form.jamPulang);
+    const statusPresensiId = form.statusPresensiId
+      ? Number(form.statusPresensiId)
+      : null;
 
-    if (!jamMasukDate && !jamPulangDate) {
+    if (!jamMasukDate && !jamPulangDate && !statusPresensiId) {
       toast({
         title: "Input belum lengkap",
-        description: "Isi minimal jam masuk atau jam pulang.",
+        description:
+          "Isi minimal jam masuk, jam pulang, atau pilih status presensi.",
         status: "warning",
       });
       return;
@@ -194,6 +226,7 @@ function DetailPresensi() {
           tanggal,
           jamMasuk: jamMasukDate ? jamMasukDate.toISOString() : null,
           jamPulang: jamPulangDate ? jamPulangDate.toISOString() : null,
+          ...(statusPresensiId ? { statusPresensiId } : {}),
         },
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -385,6 +418,34 @@ function DetailPresensi() {
   };
 
   useEffect(() => {
+    const fetchStatusPresensi = async () => {
+      setLoadingStatusPresensi(true);
+      try {
+        const token = localStorage.getItem("token");
+        const { data } = await axios.post(
+          `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/presensi/get/status`,
+          {},
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+        setStatusPresensiList(Array.isArray(data?.result) ? data.result : []);
+      } catch {
+        setStatusPresensiList([]);
+        toast({
+          title: "Gagal memuat status presensi",
+          status: "error",
+        });
+      } finally {
+        setLoadingStatusPresensi(false);
+      }
+    };
+
+    fetchStatusPresensi();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     const getDetailPresensi = async () => {
       if (!tanggal) {
         setErrorMessage("Tanggal belum dipilih dari kalender.");
@@ -420,7 +481,7 @@ function DetailPresensi() {
 
     getDetailPresensi();
   }, [tanggal]);
-  console.log(dataPegawai);
+
   return (
     <LayoutPegawai>
       <Box bgColor={"secondary"} pb={"40px"} px={"30px"} minH={"60vh"}>
@@ -465,6 +526,7 @@ function DetailPresensi() {
                   {isModeBuatPresensi ? <Th>Pilih</Th> : null}
                   <Th>Nama Pegawai</Th>
                   <Th>NIP</Th>
+                  <Th>Unit Kerja</Th>
                   <Th>Jam Masuk</Th>
                   <Th>Jam Pulang</Th> <Th>Jam Kerja</Th>
                   <Th>Status Presensi</Th>
@@ -475,7 +537,7 @@ function DetailPresensi() {
               <Tbody>
                 {dataPegawai.length === 0 ? (
                   <Tr>
-                    <Td colSpan={isModeBuatPresensi ? 9 : 8} textAlign="center">
+                    <Td colSpan={isModeBuatPresensi ? 11 : 10} textAlign="center">
                       Data presensi tidak ditemukan.
                     </Td>
                   </Tr>
@@ -487,11 +549,9 @@ function DetailPresensi() {
                     const bisaDipilih = bisaDipilihBuatPresensi(pegawai);
                     const isInputEnabled = isEditing && !isModeBuatPresensi;
                     const statusObj = presensi?.statusPresensi || {};
-                    const statusLabel =
-                      statusObj?.namaStatus ||
-                      statusObj?.status ||
-                      statusObj?.nama ||
-                      (presensi ? "Tercatat" : "Belum Presensi");
+                    const formStatusId =
+                      formByPegawai[pegawai?.id]?.statusPresensiId ?? "";
+                    const statusLabel = getStatusLabel(statusObj, presensi);
 
                     return (
                       <Tr key={pegawai?.id || `pegawai-${index}`}>
@@ -517,6 +577,7 @@ function DetailPresensi() {
                         ) : null}
                         <Td>{pegawai?.namaPegawai || pegawai?.nama || "-"}</Td>
                         <Td>{pegawai?.nip || "-"}</Td>
+                        <Td>{getUnitKerjaLabel(presensi)}</Td>
                         <Td>
                           {isInputEnabled ? (
                             <Input
@@ -559,13 +620,40 @@ function DetailPresensi() {
                         </Td>{" "}
                         <Td>{presensi?.jamKerja / 60} jam </Td>
                         <Td>
-                          <Badge
-                            colorScheme={presensi ? "green" : "orange"}
-                            borderRadius="md"
-                            px={2}
-                          >
-                            {statusLabel}
-                          </Badge>
+                          {isInputEnabled ? (
+                            <Select
+                              size="sm"
+                              placeholder={
+                                loadingStatusPresensi
+                                  ? "Memuat..."
+                                  : "Pilih status"
+                              }
+                              value={formStatusId}
+                              onChange={(e) =>
+                                handleChangeJam(
+                                  pegawai?.id,
+                                  "statusPresensiId",
+                                  e.target.value,
+                                )
+                              }
+                              isDisabled={loadingStatusPresensi}
+                            >
+                              {statusPresensiList.map((status) => (
+                                <option key={status.id} value={status.id}>
+                                  {getStatusLabel(status, null) ||
+                                    `Status ${status.id}`}
+                                </option>
+                              ))}
+                            </Select>
+                          ) : (
+                            <Badge
+                              colorScheme={presensi ? "green" : "orange"}
+                              borderRadius="md"
+                              px={2}
+                            >
+                              {statusLabel}
+                            </Badge>
+                          )}
                         </Td>
                         <Td>{presensi?.keterangan || "-"}</Td>
                         <Td>

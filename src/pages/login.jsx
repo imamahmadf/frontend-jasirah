@@ -214,7 +214,7 @@ const Login = () => {
 
       {/* Bagian Form Login */}
       <Center
-        bgGradient="linear-gradient(135deg, rgb(224, 152, 17) 0%, rgb(224, 126, 13) 100%)"
+        bgGradient="linear-gradient(180deg, rgb(13.73 22.35 29.8) 0%, rgb(181 140 80) 100%)"
         height="100vh"
         w={{ base: "100%", md: "50%" }}
         position="relative"
@@ -235,8 +235,8 @@ const Login = () => {
             left: 0,
             right: 0,
             height: "4px",
-            bgGradient:
-              "linear-gradient(90deg, rgba(55, 176, 134, 1) 0%, rgba(19, 122, 106, 1) 100%)",
+            // bgGradient:
+            //   "linear-gradient(90deg, rgba(55, 176, 134, 1) 0%, rgba(19, 122, 106, 1) 100%)",
             borderRadius: "xl xl 0 0",
           }}
         >
@@ -276,7 +276,7 @@ const Login = () => {
             </VStack>
 
             {/* Logo Aplikasi */}
-            <Box>
+            {/* <Box>
               <Text
                 fontSize="sm"
                 fontWeight={600}
@@ -294,12 +294,12 @@ const Login = () => {
                   borderRadius="lg"
                   border="2px solid"
                   borderColor={
-                    pilihanAplikasi === "pena" ? "teal.500" : "gray.200"
+                    pilihanAplikasi === "pena" ? "rgb(181 140 80)" : "gray.200"
                   }
                   bg={pilihanAplikasi === "pena" ? "teal.50" : "transparent"}
                   transition="all 0.3s ease"
                   _hover={{
-                    borderColor: "teal.500",
+                    borderColor: "rgb(181 140 80)",
                     transform: "translateY(-2px)",
                     boxShadow: "md",
                   }}
@@ -319,12 +319,12 @@ const Login = () => {
                   borderRadius="lg"
                   border="2px solid"
                   borderColor={
-                    pilihanAplikasi === "pegawai" ? "teal.500" : "gray.200"
+                    pilihanAplikasi === "pegawai" ? "rgb(181 140 80)" : "gray.200"
                   }
                   bg={pilihanAplikasi === "pegawai" ? "teal.50" : "transparent"}
                   transition="all 0.3s ease"
                   _hover={{
-                    borderColor: "teal.500",
+                    borderColor: "rgb(181 140 80)",
                     transform: "translateY(-2px)",
                     boxShadow: "md",
                   }}
@@ -344,12 +344,12 @@ const Login = () => {
                   borderRadius="lg"
                   border="2px solid"
                   borderColor={
-                    pilihanAplikasi === "aset" ? "teal.500" : "gray.200"
+                    pilihanAplikasi === "aset" ? "rgb(181 140 80)" : "gray.200"
                   }
                   bg={pilihanAplikasi === "aset" ? "teal.50" : "transparent"}
                   transition="all 0.3s ease"
                   _hover={{
-                    borderColor: "teal.500",
+                    borderColor: "rgb(181 140 80)",
                     transform: "translateY(-2px)",
                     boxShadow: "md",
                   }}
@@ -369,7 +369,7 @@ const Login = () => {
                   borderRadius="lg"
                   border="2px solid"
                   borderColor={
-                    pilihanAplikasi === "perencanaan" ? "teal.500" : "gray.200"
+                    pilihanAplikasi === "perencanaan" ? "rgb(181 140 80)" : "gray.200"
                   }
                   bg={
                     pilihanAplikasi === "perencanaan"
@@ -378,7 +378,7 @@ const Login = () => {
                   }
                   transition="all 0.3s ease"
                   _hover={{
-                    borderColor: "teal.500",
+                    borderColor: "rgb(181 140 80)",
                     transform: "translateY(-2px)",
                     boxShadow: "md",
                   }}
@@ -407,7 +407,7 @@ const Login = () => {
                   {pilihanAplikasi === "perencanaan" && "Perencanaan"}
                 </Badge>
               )}
-            </Box>
+            </Box> */}
 
             {/* Form Input */}
             <VStack spacing={5} align="stretch" mt={4}>
@@ -432,10 +432,10 @@ const Login = () => {
                   size="lg"
                   borderRadius="lg"
                   borderColor="gray.300"
-                  _hover={{ borderColor: "teal.400" }}
+                  _hover={{ borderColor: "rgb(181 140 80)" }}
                   _focus={{
-                    borderColor: "teal.500",
-                    boxShadow: "0 0 0 1px rgba(55, 176, 134, 0.3)",
+                    borderColor: "rgb(181 140 80)",
+                    boxShadow: "0 0 0 1px rgb(181 140 80)",
                   }}
                   transition="all 0.2s"
                 />
@@ -464,10 +464,10 @@ const Login = () => {
                     pr="50px"
                     borderRadius="lg"
                     borderColor="gray.300"
-                    _hover={{ borderColor: "teal.400" }}
+                    _hover={{ borderColor: "rgb(181 140 80)" }}
                     _focus={{
-                      borderColor: "teal.500",
-                      boxShadow: "0 0 0 1px rgba(55, 176, 134, 0.3)",
+                      borderColor: "rgb(181 140 80)",
+                      boxShadow: "0 0 0 1px rgb(181 140 80)",
                     }}
                     transition="all 0.2s"
                   />
@@ -482,7 +482,7 @@ const Login = () => {
                       onClick={() => setShowPassword(!showPassword)}
                       variant="ghost"
                       size="sm"
-                      _hover={{ bg: "gray.100", color: "teal.500" }}
+                      _hover={{ bg: "gray.100", color: "rgb(181 140 80)" }}
                       color="gray.500"
                     />
                   </InputRightElement>
@@ -510,17 +510,17 @@ const Login = () => {
                   size="lg"
                   borderRadius="lg"
                   borderColor="gray.300"
-                  _hover={{ borderColor: "teal.400" }}
+                  _hover={{ borderColor: "rgb(181 140 80)" }}
                   _focus={{
-                    borderColor: "teal.500",
-                    boxShadow: "0 0 0 1px rgba(55, 176, 134, 0.3)",
+                    borderColor: "rgb(181 140 80)",
+                    boxShadow: "0 0 0 1px rgb(181 140 80)",
                   }}
                   transition="all 0.2s"
                 >
                   <option value="pegawai">Kepegawaian</option>
                   <option value="aset">Aset</option>
-                  <option value="pena">Pena</option>
-                  <option value="perencanaan">Perencanaan</option>
+                  <option value="pena">Perjalanan</option>
+                  {/* <option value="perencanaan">Perencanaan</option> */}
                 </Select>
               </FormControl>
 

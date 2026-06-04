@@ -551,7 +551,7 @@ function Home() {
                   textShadow="2px 4px 8px rgba(0,0,0,0.3)"
                   letterSpacing="wide"
                 >
-                  PENA
+                  JASIRAH CORE
                 </Text>
               </Box>
 
@@ -564,8 +564,8 @@ function Home() {
                   textShadow="1px 2px 4px rgba(0,0,0,0.3)"
                 >
                   Sistem Informasi Terintegrasi untuk Pengelolaan Surat
-                  Perjalanan Dinas, Kepegawaian, dan Administrasi Dinas
-                  Kesehatan
+                  Perjalanan Dinas, Kepegawaian, dan Administrasi PT. Jasirah
+                  Diza Berjaya
                 </Text>
               </Box>
 
@@ -938,7 +938,6 @@ function Home() {
           </Box>
         )}
 
-        {/* Features Section */}
         <Box bg="background" py={20} position="relative">
           <Container maxW="container.xl">
             <VStack spacing={12}>
@@ -1008,8 +1007,6 @@ function Home() {
             </VStack>
           </Container>
         </Box>
-
-        {/* Footer Section */}
       </Box>
     </Layout>
   );

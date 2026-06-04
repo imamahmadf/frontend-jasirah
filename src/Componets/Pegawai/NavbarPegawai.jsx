@@ -81,7 +81,9 @@ const menuData = [
     title: "Presensi",
     icon: HiOutlineUsers,
     pathPrefix: "/presensi",
-    items: [{ label: "presensi", path: "/presensi/daftar-presensi" }],
+    items: [
+      { label: "presensi Pekerja Harian", path: "/presensi/daftar-presensi" },
+    ],
   },
   {
     title: "Payrol",

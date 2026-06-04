@@ -17,15 +17,14 @@ function Layout({ children, seoProps, noPaddingTop = false }) {
   // Default SEO props untuk Dinkes
   const defaultSEO = {
     title: "JDB`",
-    description:
-      "Sistem informasi perjalanan dinas dan pengelolaan aset Dinas Kesehatan",
+    description: "Sistem informasi Jasirah",
     url: window.location.href,
     image: "/src/assets/dinkes.jpg",
     organization: {
-      name: "Dinas Kesehatan",
+      name: "Jasirah",
       url: window.location.origin,
       logo: "/src/assets/Logo Pena.png",
-      description: "Dinas Kesehatan - Melayani Masyarakat dengan Profesional",
+      description: "PT. Jasirah Diza Berjaya",
       address: {
         streetAddress: "Jl. Contoh No. 123",
         addressLocality: "Kota",
