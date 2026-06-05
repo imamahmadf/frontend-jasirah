@@ -186,7 +186,7 @@ function DaftarPengeluaran() {
       .typeError("Nominal harus angka")
       .positive("Nominal harus lebih dari 0")
       .required("Nominal wajib diisi"),
-    rekananId: Yup.mixed().nullable().required("Rekanan wajib dipilih"),
+    rekananId: Yup.mixed().nullable(),
   });
 
   const scrollToDataList = () => {
@@ -2285,9 +2285,13 @@ function DaftarPengeluaran() {
                         }
                       >
                         <FormLabel fontSize={"16px"} fontWeight="medium">
-                          Rekanan
+                          Rekanan{" "}
+                          <Text as="span" fontWeight="normal" color="gray.500">
+                            (opsional)
+                          </Text>
                         </FormLabel>
                         <AsyncSelect
+                          isClearable
                           loadOptions={async (inputValue) => {
                             if (!inputValue) return [];
                             try {
