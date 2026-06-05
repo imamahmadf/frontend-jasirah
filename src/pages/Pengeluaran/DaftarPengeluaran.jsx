@@ -1425,7 +1425,10 @@ function DaftarPengeluaran() {
           borderRadius={{ base: 0, md: "md" }}
           maxW={{ base: "100%", md: "1100px" }}
           m={{ base: 0, md: 4 }}
-          maxH={{ base: "100vh", md: "90vh" }}
+          maxH={{ base: "100dvh", md: "90vh" }}
+          display="flex"
+          flexDirection="column"
+          overflow="hidden"
         >
           <Formik
             innerRef={formikRefTambah}
@@ -1478,7 +1481,8 @@ function DaftarPengeluaran() {
             validateOnChange={true}
           >
             {(formik) => (
-              <form
+              <Box
+                as="form"
                 onSubmit={(e) => {
                   e.preventDefault();
                   const keys = Object.keys(initialValuesTambah);
@@ -1489,12 +1493,24 @@ function DaftarPengeluaran() {
                   formik.setTouched(touched);
                   formik.handleSubmit(e);
                 }}
+                display="flex"
+                flexDirection="column"
+                flex="1"
+                minH={0}
+                overflow="hidden"
+                w="full"
               >
                 <ModalHeader></ModalHeader>
                 <ModalCloseButton
                   onClick={() => handleCloseModal(formik.resetForm)}
                 />
-                <ModalBody>
+                <ModalBody
+                  overflowY="auto"
+                  flex="1"
+                  minH={0}
+                  px={{ base: 4, md: 6 }}
+                  py={{ base: 4, md: 6 }}
+                >
                   <Box>
                     <HStack mb={{ base: 4, md: 6 }} spacing={3}>
                       <Box
@@ -2264,6 +2280,9 @@ function DaftarPengeluaran() {
                   pt={{ base: "12px", md: "20px" }}
                   flexDirection={{ base: "column", md: "row" }}
                   gap={3}
+                  flexShrink={0}
+                  borderTop="1px solid"
+                  borderColor="gray.200"
                 >
                   <Button
                     type="button"
@@ -2288,7 +2307,7 @@ function DaftarPengeluaran() {
                       : "Simpan Pengeluaran"}
                   </Button>
                 </ModalFooter>
-              </form>
+              </Box>
             )}
           </Formik>
         </ModalContent>
