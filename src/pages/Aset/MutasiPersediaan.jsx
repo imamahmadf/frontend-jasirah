@@ -49,24 +49,14 @@ function MutasiPersediaan() {
   const { colorMode } = useColorMode();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const fetchData = async () => {
+  const fetchMutasiList = async () => {
     if (!unitKerjaId) return;
     setLoading(true);
     try {
-      const [mutasiRes, stokRes, ukRes] = await Promise.all([
-        axios.get(
-          `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/mutasi-persediaan/get/list/${unitKerjaId}`
-        ),
-        axios.get(
-          `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/mutasi-persediaan/get/stok/${unitKerjaId}`
-        ),
-        axios.get(
-          `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/admin/get/unit-kerja`
-        ),
-      ]);
-      setMutasiList(mutasiRes.data.result || []);
-      setStokList(stokRes.data.result || []);
-      setUnitKerjaList(ukRes.data.result || []);
+      const res = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/mutasi-persediaan/get/list/${unitKerjaId}`
+      );
+      setMutasiList(res.data.result || []);
     } catch (err) {
       console.error(err);
       toast({
@@ -81,9 +71,55 @@ function MutasiPersediaan() {
     }
   };
 
+  const fetchStokModal = async () => {
+    try {
+      const [stokRes, ukRes] = await Promise.all([
+        axios.get(
+          `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/mutasi-persediaan/get/stok`
+        ),
+        unitKerjaList.length
+          ? Promise.resolve({ data: { result: unitKerjaList } })
+          : axios.get(
+              `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/admin/get/unit-kerja`
+            ),
+      ]);
+      setStokList(stokRes.data.result || []);
+      if (!unitKerjaList.length) {
+        setUnitKerjaList(ukRes.data.result || []);
+      }
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Error",
+        description: "Gagal memuat daftar stok",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const fetchUnitKerjaList = async () => {
+    try {
+      const ukRes = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/admin/get/unit-kerja`
+      );
+      setUnitKerjaList(ukRes.data.result || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    fetchData();
+    fetchMutasiList();
+    fetchUnitKerjaList();
   }, [unitKerjaId]);
+
+  const handleOpenModal = () => {
+    resetForm();
+    fetchStokModal();
+    onOpen();
+  };
 
   const resetForm = () => {
     setSelectedStok(null);
@@ -136,7 +172,7 @@ function MutasiPersediaan() {
       });
       resetForm();
       onClose();
-      fetchData();
+      fetchMutasiList();
     } catch (err) {
       toast({
         title: "Error",
@@ -152,14 +188,22 @@ function MutasiPersediaan() {
   const formatDate = (d) =>
     d ? new Date(d).toLocaleDateString("id-ID") : "-";
 
+  const getUnitKerjaLabel = (stok) =>
+    stok?.daftarUnitKerja?.unitKerja ||
+    stok?.daftarUnitKerja?.kode ||
+    unitKerjaList.find((u) => u.id === stok?.unitKerjaId)?.unitKerja ||
+    "-";
+
   const stokOptions = stokList.map((s) => ({
     value: s.id,
-    label: `${s.persediaan?.nama || "-"} | Sisa: ${s.sisaStok} | ${s.spesifikasi || ""}`,
+    label: `[${getUnitKerjaLabel(s)}] ${s.persediaan?.nama || "-"} | Sisa: ${s.sisaStok}${s.spesifikasi ? ` | ${s.spesifikasi}` : ""}`,
     data: s,
   }));
 
+  const asalUnitKerjaId = selectedStok?.unitKerjaId ?? null;
+
   const unitOptions = unitKerjaList
-    .filter((u) => u.id !== unitKerjaId)
+    .filter((u) => Number(u.id) !== Number(asalUnitKerjaId))
     .map((u) => ({
       value: u.id,
       label: u.unitKerja || u.kode,
@@ -179,7 +223,7 @@ function MutasiPersediaan() {
               Mutasi Persediaan
             </Text>
             <Box flex={1} />
-            <Button variant="primary" onClick={onOpen}>
+            <Button variant="primary" onClick={handleOpenModal}>
               Mutasi Baru +
             </Button>
           </HStack>
@@ -251,9 +295,22 @@ function MutasiPersediaan() {
               <Select2
                 options={stokOptions}
                 placeholder="Pilih barang dengan sisa stok"
+                value={
+                  selectedStok
+                    ? stokOptions.find((opt) => opt.value === selectedStok.id) ||
+                      null
+                    : null
+                }
                 onChange={(opt) => {
-                  setSelectedStok(opt?.data || null);
+                  const data = opt?.data || null;
+                  setSelectedStok(data);
                   setJumlah("");
+                  if (
+                    data &&
+                    Number(unitKerjaTujuanId) === Number(data.unitKerjaId)
+                  ) {
+                    setUnitKerjaTujuanId(null);
+                  }
                 }}
                 chakraStyles={{
                   control: (p) => ({ ...p, bg: "terang", minH: "48px" }),
@@ -263,6 +320,8 @@ function MutasiPersediaan() {
 
             {selectedStok && (
               <Text fontSize="sm" color="gray.500" mb={4}>
+                Unit asal: <strong>{getUnitKerjaLabel(selectedStok)}</strong>
+                {" · "}
                 Sisa stok tersedia: <strong>{selectedStok.sisaStok}</strong>
               </Text>
             )}
@@ -271,7 +330,18 @@ function MutasiPersediaan() {
               <FormLabel>Unit Kerja Tujuan</FormLabel>
               <Select2
                 options={unitOptions}
-                placeholder="Pilih unit kerja tujuan"
+                placeholder={
+                  selectedStok
+                    ? "Pilih unit kerja tujuan"
+                    : "Pilih barang terlebih dahulu"
+                }
+                isDisabled={!selectedStok}
+                value={
+                  unitKerjaTujuanId
+                    ? unitOptions.find((opt) => opt.value === unitKerjaTujuanId) ||
+                      null
+                    : null
+                }
                 onChange={(opt) => setUnitKerjaTujuanId(opt?.value || null)}
                 chakraStyles={{
                   control: (p) => ({ ...p, bg: "terang", minH: "48px" }),

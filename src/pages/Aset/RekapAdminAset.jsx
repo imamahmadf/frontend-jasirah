@@ -44,6 +44,64 @@ import { useSelector } from "react-redux";
 import { userRedux, selectRole } from "../../Redux/Reducers/auth";
 import ExcelJS from "exceljs";
 
+const formatStokMasukTeks = (stokMasuk, mutasiMasukQty) => {
+  const parts = [];
+  if (stokMasuk > 0) parts.push(`+${stokMasuk}`);
+  if (mutasiMasukQty > 0) parts.push(`+${mutasiMasukQty} (mutasi)`);
+  return parts.length ? parts.join(", ") : "-";
+};
+
+const formatStokKeluarTeks = (stokKeluar, mutasiKeluarQty) => {
+  const parts = [];
+  if (stokKeluar > 0) parts.push(`-${stokKeluar}`);
+  if (mutasiKeluarQty > 0) parts.push(`-${mutasiKeluarQty} (mutasi)`);
+  return parts.length ? parts.join(", ") : "-";
+};
+
+const StokMasukCell = ({ stokMasuk, mutasiMasukQty }) => {
+  const hasMasuk = stokMasuk > 0;
+  const hasMutasi = mutasiMasukQty > 0;
+  if (!hasMasuk && !hasMutasi) {
+    return <Text color="gray.400">-</Text>;
+  }
+  return (
+    <Box>
+      {hasMasuk && (
+        <Text fontWeight="bold" color="green.600">
+          +{stokMasuk}
+        </Text>
+      )}
+      {hasMutasi && (
+        <Text fontWeight="bold" color="purple.600" fontSize="sm">
+          +{mutasiMasukQty} (mutasi)
+        </Text>
+      )}
+    </Box>
+  );
+};
+
+const StokKeluarCell = ({ stokKeluar, mutasiKeluarQty }) => {
+  const hasKeluar = stokKeluar > 0;
+  const hasMutasi = mutasiKeluarQty > 0;
+  if (!hasKeluar && !hasMutasi) {
+    return <Text color="gray.400">-</Text>;
+  }
+  return (
+    <Box>
+      {hasKeluar && (
+        <Text fontWeight="bold" color="red.600">
+          -{stokKeluar}
+        </Text>
+      )}
+      {hasMutasi && (
+        <Text fontWeight="bold" color="orange.600" fontSize="sm">
+          -{mutasiKeluarQty} (mutasi)
+        </Text>
+      )}
+    </Box>
+  );
+};
+
 function RekapAdminAset(props) {
   const [DataPersediaan, setDataPersediaan] = useState([]);
   const [showDetailTable, setShowDetailTable] = useState({});
@@ -88,10 +146,9 @@ function RekapAdminAset(props) {
         if (!item.detailStokMasuk || item.detailStokMasuk.length === 0)
           return sumBarang;
         const subtotalBarang = item.detailStokMasuk.reduce((sumDetail, d) => {
-          const totalMasuk =
-            (Number(d.stokMasuk) || 0) + (Number(d.mutasiMasuk) || 0);
+          const mutasiMasuk = Number(d.mutasiMasuk) || 0;
           const harga = Number(d.hargaSatuan) || 0;
-          return sumDetail + totalMasuk * harga;
+          return sumDetail + mutasiMasuk * harga;
         }, 0);
         return sumBarang + subtotalBarang;
       }, 0);
@@ -107,10 +164,9 @@ function RekapAdminAset(props) {
         if (!item.detailStokMasuk || item.detailStokMasuk.length === 0)
           return sumBarang;
         const subtotalBarang = item.detailStokMasuk.reduce((sumDetail, d) => {
-          const totalKeluar =
-            (Number(d.stokKeluar) || 0) + (Number(d.mutasiKeluar) || 0);
+          const mutasiKeluar = Number(d.mutasiKeluar) || 0;
           const harga = Number(d.hargaSatuan) || 0;
-          return sumDetail + totalKeluar * harga;
+          return sumDetail + mutasiKeluar * harga;
         }, 0);
         return sumBarang + subtotalBarang;
       }, 0);
@@ -300,11 +356,11 @@ function RekapAdminAset(props) {
         { header: "Unit Kerja", key: "unitKerja", width: 20 },
         { header: "Sumber Dana", key: "sumberDana", width: 25 },
         { header: "Spesifikasi", key: "spesifikasi", width: 30 },
+        { header: "Harga Satuan", key: "hargaSatuan", width: 18 },
         { header: "Stok Awal", key: "stokAwal", width: 12 },
         { header: "Stok Masuk", key: "stokMasuk", width: 12 },
         { header: "Stok Keluar", key: "stokKeluar", width: 12 },
         { header: "Stok Akhir", key: "stokAkhir", width: 12 },
-        { header: "Harga Satuan", key: "hargaSatuan", width: 18 },
         { header: "Saldo Awal", key: "saldoAwal", width: 18 },
         { header: "Mutasi Masuk", key: "mutasiMasuk", width: 18 },
         { header: "Mutasi Keluar", key: "mutasiKeluar", width: 18 },
@@ -323,11 +379,11 @@ function RekapAdminAset(props) {
         "Unit Kerja",
         "Sumber Dana",
         "Spesifikasi",
+        "Harga Satuan",
         "Stok Awal",
         "Stok Masuk",
         "Stok Keluar",
         "Stok Akhir",
-        "Harga Satuan",
         "Saldo Awal",
         "Mutasi Masuk",
         "Mutasi Keluar",
@@ -358,22 +414,20 @@ function RekapAdminAset(props) {
                 const stokKeluar = Number(detail.stokKeluar) || 0;
                 const mutasiMasukQty = Number(detail.mutasiMasuk) || 0;
                 const mutasiKeluarQty = Number(detail.mutasiKeluar) || 0;
-                const totalMasukQty = stokMasuk + mutasiMasukQty;
-                const totalKeluarQty = stokKeluar + mutasiKeluarQty;
                 const stokAkhir = Number(detail.stokAkhir) || 0;
                 const hargaSatuan = Number(detail.hargaSatuan) || 0;
                 const saldoAwal = stokAwal * hargaSatuan;
-                const nilaiMasuk = totalMasukQty * hargaSatuan;
-                const nilaiKeluar = totalKeluarQty * hargaSatuan;
+                const nilaiMutasiMasuk = mutasiMasukQty * hargaSatuan;
+                const nilaiMutasiKeluar = mutasiKeluarQty * hargaSatuan;
                 const saldoAkhir = stokAkhir * hargaSatuan;
 
                 grandTotalStokAwal += stokAwal;
-                grandTotalStokMasuk += totalMasukQty;
-                grandTotalStokKeluar += totalKeluarQty;
+                grandTotalStokMasuk += stokMasuk;
+                grandTotalStokKeluar += stokKeluar;
                 grandTotalStokAkhir += stokAkhir;
                 grandTotalSaldoAwal += saldoAwal;
-                grandTotalMutasiMasuk += nilaiMasuk;
-                grandTotalMutasiKeluar += nilaiKeluar;
+                grandTotalMutasiMasuk += nilaiMutasiMasuk;
+                grandTotalMutasiKeluar += nilaiMutasiKeluar;
                 grandTotalSaldoAkhir += saldoAkhir;
 
                 // Tulis data baris
@@ -392,14 +446,14 @@ function RekapAdminAset(props) {
                   detail.unitKerja ? detail.unitKerja.unitKerja : "-",
                   detail.sumberDana ? detail.sumberDana.sumber : "-",
                   detail.spesifikasi || "-",
-                  stokAwal,
-                  totalMasukQty,
-                  totalKeluarQty,
-                  stokAkhir,
                   hargaSatuan,
+                  stokAwal,
+                  formatStokMasukTeks(stokMasuk, mutasiMasukQty),
+                  formatStokKeluarTeks(stokKeluar, mutasiKeluarQty),
+                  stokAkhir,
                   saldoAwal,
-                  nilaiMasuk,
-                  nilaiKeluar,
+                  nilaiMutasiMasuk,
+                  nilaiMutasiKeluar,
                   saldoAkhir,
                   detail.keterangan || "-",
                 ];
@@ -423,11 +477,11 @@ function RekapAdminAset(props) {
         "",
         "",
         "",
+        "",
         grandTotalStokAwal,
         grandTotalStokMasuk,
         grandTotalStokKeluar,
         grandTotalStokAkhir,
-        "",
         grandTotalSaldoAwal,
         grandTotalMutasiMasuk,
         grandTotalMutasiKeluar,
@@ -438,13 +492,16 @@ function RekapAdminAset(props) {
 
       // Format angka
       for (let r = 2; r <= worksheet.rowCount; r += 1) {
+        // Format kolom harga satuan
+        const hargaCell = worksheet.getCell(r, 9);
+        if (typeof hargaCell.value === "number") hargaCell.numFmt = "#,##0";
         // Format kolom stok
-        for (let c = 9; c <= 12; c += 1) {
+        for (let c = 10; c <= 13; c += 1) {
           const cell = worksheet.getCell(r, c);
           if (typeof cell.value === "number") cell.numFmt = "#,##0";
         }
-        // Format kolom harga dan nilai
-        for (let c = 13; c <= 17; c += 1) {
+        // Format kolom nilai saldo / mutasi
+        for (let c = 14; c <= 17; c += 1) {
           const cell = worksheet.getCell(r, c);
           if (typeof cell.value === "number") cell.numFmt = "#,##0";
         }
@@ -724,8 +781,6 @@ function RekapAdminAset(props) {
             const stokKeluar = Number(detail.stokKeluar) || 0;
             const mutasiMasukQty = Number(detail.mutasiMasuk) || 0;
             const mutasiKeluarQty = Number(detail.mutasiKeluar) || 0;
-            const totalMasukQty = stokMasuk + mutasiMasukQty;
-            const totalKeluarQty = stokKeluar + mutasiKeluarQty;
             const stokAkhir = Number(detail.stokAkhir) || 0;
             const hargaSatuan = Number(detail.hargaSatuan) || 0;
 
@@ -759,43 +814,30 @@ function RekapAdminAset(props) {
                   )}
                   {mobileField("Sumber Dana", detail.sumberDana?.sumber || "-")}
                   {mobileField("Spesifikasi", detail.spesifikasi || "-")}
+                  {mobileField(
+                    "Harga Satuan",
+                    `Rp ${hargaSatuan.toLocaleString("id-ID")}`,
+                  )}
                   {mobileField("Stok Awal", stokAwal)}
                   {mobileField(
                     "Stok Masuk",
-                    totalMasukQty > 0 ? (
-                      <Text
-                        color={detail.isMutasi ? "purple.600" : "green.600"}
-                        fontWeight="bold"
-                      >
-                        +{totalMasukQty}
-                        {detail.isMutasi ? " (mutasi)" : ""}
-                      </Text>
-                    ) : (
-                      "-"
-                    ),
+                    <StokMasukCell
+                      stokMasuk={stokMasuk}
+                      mutasiMasukQty={mutasiMasukQty}
+                    />,
                   )}
                   {mobileField(
                     "Stok Keluar",
-                    totalKeluarQty > 0 ? (
-                      <Text color="red.600" fontWeight="bold">
-                        -{totalKeluarQty}
-                        {mutasiKeluarQty > 0 && stokKeluar === 0
-                          ? " (mutasi)"
-                          : ""}
-                      </Text>
-                    ) : (
-                      "-"
-                    ),
+                    <StokKeluarCell
+                      stokKeluar={stokKeluar}
+                      mutasiKeluarQty={mutasiKeluarQty}
+                    />,
                   )}
                   {mobileField(
                     "Stok Akhir",
                     <Text color="blue.600" fontWeight="bold">
                       {stokAkhir}
                     </Text>,
-                  )}
-                  {mobileField(
-                    "Harga Satuan",
-                    `Rp ${hargaSatuan.toLocaleString("id-ID")}`,
                   )}
                   {mobileField(
                     "Saldo Akhir",
@@ -1190,11 +1232,11 @@ function RekapAdminAset(props) {
                                 <Th>Unit Kerja</Th>
                                 <Th>Sumber Dana</Th>
                                 <Th>Spesifikasi</Th>
+                                <Th>Harga Satuan</Th>
                                 <Th>Stok Awal</Th>
                                 <Th>Stok Masuk</Th>
                                 <Th>Stok Keluar</Th>
                                 <Th>Stok Akhir</Th>
-                                <Th>Harga Satuan</Th>
                                 <Th>Saldo Awal</Th>
                                 <Th>Mutasi Masuk</Th>
                                 <Th>Mutasi Keluar</Th>
@@ -1240,18 +1282,14 @@ function RekapAdminAset(props) {
                                             Number(detail.mutasiMasuk) || 0;
                                           const mutasiKeluarQty =
                                             Number(detail.mutasiKeluar) || 0;
-                                          const totalMasukQty =
-                                            stokMasuk + mutasiMasukQty;
-                                          const totalKeluarQty =
-                                            stokKeluar + mutasiKeluarQty;
                                           const stokAkhir =
                                             Number(detail.stokAkhir) || 0;
                                         const hargaSatuan =
                                           Number(detail.hargaSatuan) || 0;
-                                        const nilaiMasuk =
-                                          totalMasukQty * hargaSatuan;
-                                        const nilaiKeluar =
-                                          totalKeluarQty * hargaSatuan;
+                                        const nilaiMutasiMasuk =
+                                          mutasiMasukQty * hargaSatuan;
+                                        const nilaiMutasiKeluar =
+                                          mutasiKeluarQty * hargaSatuan;
 
                                         return (
                                             <Tr key={detail.id}>
@@ -1311,49 +1349,35 @@ function RekapAdminAset(props) {
                                               <Td>
                                                 <Text
                                                   fontWeight={"bold"}
+                                                  color={"green.600"}
+                                                >
+                                                  Rp{" "}
+                                                  {hargaSatuan.toLocaleString(
+                                                    "id-ID",
+                                                  )}
+                                                </Text>
+                                              </Td>
+                                              <Td>
+                                                <Text
+                                                  fontWeight={"bold"}
                                                   color={"gray.600"}
                                                 >
                                                   {stokAwal}
                                                 </Text>
                                               </Td>
                                               <Td>
-                                                {totalMasukQty > 0 ? (
-                                                  <Text
-                                                    fontWeight={"bold"}
-                                                    color={
-                                                      detail.isMutasi
-                                                        ? "purple.600"
-                                                        : "green.600"
-                                                    }
-                                                  >
-                                                    +{totalMasukQty}
-                                                    {detail.isMutasi
-                                                      ? " (mutasi)"
-                                                      : ""}
-                                                  </Text>
-                                                ) : (
-                                                  <Text color={"gray.400"}>
-                                                    -
-                                                  </Text>
-                                                )}
+                                                <StokMasukCell
+                                                  stokMasuk={stokMasuk}
+                                                  mutasiMasukQty={mutasiMasukQty}
+                                                />
                                               </Td>
                                               <Td>
-                                                {totalKeluarQty > 0 ? (
-                                                  <Text
-                                                    fontWeight={"bold"}
-                                                    color={"red.600"}
-                                                  >
-                                                    -{totalKeluarQty}
-                                                    {mutasiKeluarQty > 0 &&
-                                                    stokKeluar === 0
-                                                      ? " (mutasi)"
-                                                      : ""}
-                                                  </Text>
-                                                ) : (
-                                                  <Text color={"gray.400"}>
-                                                    -
-                                                  </Text>
-                                                )}
+                                                <StokKeluarCell
+                                                  stokKeluar={stokKeluar}
+                                                  mutasiKeluarQty={
+                                                    mutasiKeluarQty
+                                                  }
+                                                />
                                               </Td>
                                               <Td>
                                                 <Text
@@ -1361,17 +1385,6 @@ function RekapAdminAset(props) {
                                                   color={"blue.600"}
                                                 >
                                                   {stokAkhir}
-                                                </Text>
-                                              </Td>
-                                              <Td>
-                                                <Text
-                                                  fontWeight={"bold"}
-                                                  color={"green.600"}
-                                                >
-                                                  Rp{" "}
-                                                  {hargaSatuan.toLocaleString(
-                                                    "id-ID",
-                                                  )}
                                                 </Text>
                                               </Td>
                                               <Td>
@@ -1386,13 +1399,13 @@ function RekapAdminAset(props) {
                                                 </Text>
                                               </Td>
                                               <Td>
-                                                {nilaiMasuk > 0 ? (
+                                                {nilaiMutasiMasuk > 0 ? (
                                                   <Text
                                                     fontWeight={"bold"}
-                                                    color={"green.600"}
+                                                    color={"purple.600"}
                                                   >
                                                     Rp{" "}
-                                                    {nilaiMasuk.toLocaleString(
+                                                    {nilaiMutasiMasuk.toLocaleString(
                                                       "id-ID",
                                                     )}
                                                   </Text>
@@ -1403,13 +1416,13 @@ function RekapAdminAset(props) {
                                                 )}
                                               </Td>
                                               <Td>
-                                                {nilaiKeluar > 0 ? (
+                                                {nilaiMutasiKeluar > 0 ? (
                                                   <Text
                                                     fontWeight={"bold"}
-                                                    color={"red.600"}
+                                                    color={"orange.600"}
                                                   >
                                                     Rp{" "}
-                                                    {nilaiKeluar.toLocaleString(
+                                                    {nilaiMutasiKeluar.toLocaleString(
                                                       "id-ID",
                                                     )}
                                                   </Text>
@@ -1447,6 +1460,7 @@ function RekapAdminAset(props) {
                                         >
                                           TOTAL
                                         </Td>
+                                        <Td />
                                         <Td
                                           fontWeight={"bold"}
                                           color={"gray.600"}
@@ -1466,8 +1480,7 @@ function RekapAdminAset(props) {
                                           {item.detailStokMasuk.reduce(
                                             (sum, detail) =>
                                               sum +
-                                              (Number(detail.stokMasuk) || 0) +
-                                              (Number(detail.mutasiMasuk) || 0),
+                                              (Number(detail.stokMasuk) || 0),
                                             0,
                                           )}
                                         </Td>
@@ -1479,9 +1492,7 @@ function RekapAdminAset(props) {
                                           {item.detailStokMasuk.reduce(
                                             (sum, detail) =>
                                               sum +
-                                              (Number(detail.stokKeluar) || 0) +
-                                              (Number(detail.mutasiKeluar) ||
-                                                0),
+                                              (Number(detail.stokKeluar) || 0),
                                             0,
                                           )}
                                         </Td>
@@ -1495,19 +1506,6 @@ function RekapAdminAset(props) {
                                               (Number(detail.stokAkhir) || 0),
                                             0,
                                           )}
-                                        </Td>
-                                        <Td
-                                          fontWeight={"bold"}
-                                          color={"green.600"}
-                                        >
-                                          Rp{" "}
-                                          {Math.round(
-                                            item.detailStokMasuk.reduce(
-                                              (sum, detail) =>
-                                                sum + detail.hargaSatuan,
-                                              0,
-                                            ) / item.detailStokMasuk.length,
-                                          ).toLocaleString("id-ID")}
                                         </Td>
                                         <Td
                                           fontWeight={"bold"}
@@ -1534,10 +1532,8 @@ function RekapAdminAset(props) {
                                             .reduce(
                                               (sum, detail) =>
                                                 sum +
-                                                ((Number(detail.stokMasuk) ||
-                                                  0) +
-                                                  (Number(detail.mutasiMasuk) ||
-                                                    0)) *
+                                                (Number(detail.mutasiMasuk) ||
+                                                  0) *
                                                   (Number(detail.hargaSatuan) ||
                                                     0),
                                               0,
@@ -1553,11 +1549,8 @@ function RekapAdminAset(props) {
                                             .reduce(
                                               (sum, detail) =>
                                                 sum +
-                                                ((Number(detail.stokKeluar) ||
-                                                  0) +
-                                                  (Number(
-                                                    detail.mutasiKeluar,
-                                                  ) || 0)) *
+                                                (Number(detail.mutasiKeluar) ||
+                                                  0) *
                                                   (Number(detail.hargaSatuan) ||
                                                     0),
                                               0,
@@ -1610,6 +1603,7 @@ function RekapAdminAset(props) {
                                 >
                                   GRAND TOTAL
                                 </Td>
+                                <Td />
                                 <Td fontWeight={"bold"} color={"gray.600"}>
                                   {kategori.barang.reduce(
                                     (sumItem, item) =>
@@ -1634,8 +1628,7 @@ function RekapAdminAset(props) {
                                         ? item.detailStokMasuk.reduce(
                                             (sum, detail) =>
                                               sum +
-                                              (Number(detail.stokMasuk) || 0) +
-                                              (Number(detail.mutasiMasuk) || 0),
+                                              (Number(detail.stokMasuk) || 0),
                                             0,
                                           )
                                         : 0),
@@ -1651,9 +1644,7 @@ function RekapAdminAset(props) {
                                         ? item.detailStokMasuk.reduce(
                                             (sum, detail) =>
                                               sum +
-                                              (Number(detail.stokKeluar) || 0) +
-                                              (Number(detail.mutasiKeluar) ||
-                                                0),
+                                              (Number(detail.stokKeluar) || 0),
                                             0,
                                           )
                                         : 0),
@@ -1666,40 +1657,6 @@ function RekapAdminAset(props) {
                                       sumItem + (item.stokAkhir || 0),
                                     0,
                                   )}
-                                </Td>
-                                <Td fontWeight={"bold"} color={"green.600"}>
-                                  Rp{" "}
-                                  {(() => {
-                                    const { totalHarga, count } =
-                                      kategori.barang.reduce(
-                                        (accItem, item) => {
-                                          if (
-                                            item.detailStokMasuk &&
-                                            item.detailStokMasuk.length > 0
-                                          ) {
-                                            const subtotal =
-                                              item.detailStokMasuk.reduce(
-                                                (acc, d) => acc + d.hargaSatuan,
-                                                0,
-                                              );
-                                            return {
-                                              totalHarga:
-                                                accItem.totalHarga + subtotal,
-                                              count:
-                                                accItem.count +
-                                                item.detailStokMasuk.length,
-                                            };
-                                          }
-                                          return accItem;
-                                        },
-                                        { totalHarga: 0, count: 0 },
-                                      );
-                                    const avg =
-                                      count > 0
-                                        ? Math.round(totalHarga / count)
-                                        : 0;
-                                    return avg.toLocaleString("id-ID");
-                                  })()}
                                 </Td>
                                 <Td fontWeight={"bold"} color={"blue.600"}>
                                   Rp{" "}
@@ -1730,8 +1687,7 @@ function RekapAdminAset(props) {
                                         ? item.detailStokMasuk.reduce(
                                             (sum, d) =>
                                               sum +
-                                              ((Number(d.stokMasuk) || 0) +
-                                                (Number(d.mutasiMasuk) || 0)) *
+                                              (Number(d.mutasiMasuk) || 0) *
                                                 (Number(d.hargaSatuan) || 0),
                                             0,
                                           )
@@ -1750,8 +1706,7 @@ function RekapAdminAset(props) {
                                         ? item.detailStokMasuk.reduce(
                                             (sum, d) =>
                                               sum +
-                                              ((Number(d.stokKeluar) || 0) +
-                                                (Number(d.mutasiKeluar) || 0)) *
+                                              (Number(d.mutasiKeluar) || 0) *
                                                 (Number(d.hargaSatuan) || 0),
                                             0,
                                           )
@@ -1759,7 +1714,7 @@ function RekapAdminAset(props) {
                                     0,
                                   )
                                   .toLocaleString("id-ID")}
-                                </Td>
+                              </Td>
                                 <Td fontWeight={"bold"} color={"blue.600"}>
                                   Rp{" "}
                                   {kategori.barang

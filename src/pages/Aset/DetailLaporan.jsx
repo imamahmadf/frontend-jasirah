@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import LayoutAset from "../../Componets/Aset/LayoutAset";
 import ReactPaginate from "react-paginate";
@@ -48,8 +48,11 @@ import { useDisclosure } from "@chakra-ui/react";
 import { BsEyeFill } from "react-icons/bs";
 import { useSelector } from "react-redux";
 import { userRedux, selectRole } from "../../Redux/Reducers/auth";
+import { formatRupiah } from "../../utils/formatRupiah";
 
 function DetailLaporan(props) {
+  const history = useHistory();
+
   // Fungsi untuk memformat nomor surat dengan mengganti BULAN dan TAHUN
   const formatNomorSurat = (nomor, tanggal, nomorPesanan) => {
     if (!nomor || !tanggal) return nomor || "-";
@@ -117,7 +120,11 @@ function DetailLaporan(props) {
   const [dataSatuan, setDataSatuan] = useState(null);
 
   const [satuanPersediaanId, setSatuanPersediaanId] = useState(0);
+  const [pengeluaranId, setPengeluaranId] = useState(null);
+  const [selectedPengeluaran, setSelectedPengeluaran] = useState(null);
   const [unitKerjaId, setUnitKerjaId] = useState(null);
+  const pengeluaranSearchTimerRef = useRef(null);
+  const PENGELUARAN_SEARCH_DEBOUNCE_MS = 500;
   const [filterUnitKerjaId, setFilterUnitKerjaId] = useState(null);
   const [dataUnitKerja, setDataUnitKerja] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -181,6 +188,8 @@ function DetailLaporan(props) {
     setSumberDanaId(null);
     setSuratPesananId(null);
     setSatuanPersediaanId(0);
+    setPengeluaranId(null);
+    setSelectedPengeluaran(null);
     setUnitKerjaId(null);
     setSelectedFile(null);
     setPreviewUrl(Foto);
@@ -189,7 +198,7 @@ function DetailLaporan(props) {
   async function fetchUnitKerja() {
     await axios
       .get(
-        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/admin/get/unit-kerja`
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/admin/get/unit-kerja`,
       )
       .then((res) => {
         setDataUnitKerja(res.data.result);
@@ -202,19 +211,61 @@ function DetailLaporan(props) {
   const FILTER_ALL = "all";
   const apiBaseUrl = import.meta.env.VITE_REACT_APP_API_BASE_URL;
 
+  const formatTanggalPengeluaran = (tanggal) =>
+    tanggal
+      ? new Date(tanggal).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "-";
+
+  const loadPengeluaranOptions = useCallback(
+    (inputValue) =>
+      new Promise((resolve) => {
+        if (pengeluaranSearchTimerRef.current) {
+          clearTimeout(pengeluaranSearchTimerRef.current);
+        }
+
+        const trimmed = inputValue?.trim() || "";
+        if (!trimmed) {
+          resolve([]);
+          return;
+        }
+
+        pengeluaranSearchTimerRef.current = setTimeout(async () => {
+          try {
+            const res = await axios.get(
+              `${apiBaseUrl}/pengeluaran/search?q=${encodeURIComponent(trimmed)}`,
+            );
+            resolve(
+              (res.data.result || []).map((val) => ({
+                value: val.id,
+                label: `${val.deskripsi || "-"} — ${formatTanggalPengeluaran(val.tanggal)} — ${formatRupiah(val.nominal) || "-"}`,
+              })),
+            );
+          } catch (err) {
+            console.error("Failed to load pengeluaran:", err.message);
+            resolve([]);
+          }
+        }, PENGELUARAN_SEARCH_DEBOUNCE_MS);
+      }),
+    [apiBaseUrl],
+  );
+
   const getFotoUrl = (foto) => {
     if (!foto) return null;
     if (foto.startsWith("http")) return foto;
     return `${apiBaseUrl}${foto.startsWith("/") ? foto : `/${foto}`}`;
   };
 
-  const renderFoto = (foto, size = "50px") => {
+  const renderFoto = (foto, size = "50px", alt = "foto") => {
     const src = getFotoUrl(foto);
     if (!src) {
       return (
         <Image
           src={Foto}
-          alt="no foto"
+          alt={`tidak ada ${alt}`}
           boxSize={size}
           objectFit="cover"
           borderRadius="md"
@@ -226,7 +277,7 @@ function DetailLaporan(props) {
     return (
       <Image
         src={src}
-        alt="foto persediaan"
+        alt={alt}
         boxSize={size}
         objectFit="cover"
         borderRadius="md"
@@ -254,8 +305,7 @@ function DetailLaporan(props) {
     const baseUrl = `${
       import.meta.env.VITE_REACT_APP_API_BASE_URL
     }/laporan-persediaan/get/detail/${props.match.params.id}`;
-    const url =
-      id === FILTER_ALL ? baseUrl : `${baseUrl}?unitKerjaId=${id}`;
+    const url = id === FILTER_ALL ? baseUrl : `${baseUrl}?unitKerjaId=${id}`;
 
     await axios
       .get(url)
@@ -295,13 +345,15 @@ function DetailLaporan(props) {
     if (suratPesananId) formData.append("suratPesananId", suratPesananId);
     if (nomorPesanan) formData.append("nomorPesanan", nomorPesanan);
     if (sumberDanaId) formData.append("sumberDanaId", sumberDanaId);
-    if (satuanPersediaanId) formData.append("satuanPersediaanId", satuanPersediaanId);
+    if (satuanPersediaanId)
+      formData.append("satuanPersediaanId", satuanPersediaanId);
+    if (pengeluaranId) formData.append("pengeluaranId", pengeluaranId);
     if (selectedFile) formData.append("pic", selectedFile);
 
     axios
       .post(
         `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/persediaan/post/masuk`,
-        formData
+        formData,
       )
       .then((res) => {
         toast({
@@ -334,6 +386,12 @@ function DetailLaporan(props) {
     if (defaultUnitKerjaId) {
       setFilterUnitKerjaId(defaultUnitKerjaId);
     }
+
+    return () => {
+      if (pengeluaranSearchTimerRef.current) {
+        clearTimeout(pengeluaranSearchTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -378,7 +436,7 @@ function DetailLaporan(props) {
                   value={
                     filterUnitKerjaId
                       ? unitKerjaFilterOptions.find(
-                          (opt) => opt.value === filterUnitKerjaId
+                          (opt) => opt.value === filterUnitKerjaId,
                         ) || null
                       : null
                   }
@@ -426,7 +484,9 @@ function DetailLaporan(props) {
                   <Th>Satuan</Th>
                   <Th>harga satuan</Th>
                   <Th>Total</Th>
-                  <Th>Foto</Th>
+                  <Th>Foto Barang</Th>
+                  <Th>Foto Pengeluaran</Th>
+                  <Th>Aksi</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -438,7 +498,7 @@ function DetailLaporan(props) {
                       {formatNomorSurat(
                         item?.suratPesanan.nomor,
                         item?.tanggal,
-                        item?.nomorPesanan
+                        item?.nomorPesanan,
                       )}
                     </Td>
                     <Td>
@@ -453,7 +513,7 @@ function DetailLaporan(props) {
                     <Td>
                       {item?.daftarUnitKerja?.unitKerja ||
                         dataUnitKerja?.find(
-                          (val) => val.id === item?.unitKerjaId
+                          (val) => val.id === item?.unitKerjaId,
                         )?.unitKerja ||
                         "-"}
                     </Td>
@@ -479,10 +539,52 @@ function DetailLaporan(props) {
                     <Td>
                       Rp
                       {Number(item?.jumlah * item?.hargaSatuan).toLocaleString(
-                        "id-ID"
+                        "id-ID",
                       )}
                     </Td>
-                    <Td>{renderFoto(item?.foto)}</Td>
+                    <Td>{renderFoto(item?.foto, "50px", "foto barang")}</Td>
+                    <Td>
+                      {renderFoto(
+                        item?.pengeluaran?.foto,
+                        "50px",
+                        "foto pengeluaran",
+                      )}
+                    </Td>
+                    <Td>
+                      <Flex gap={2} wrap="wrap">
+                        {item?.pengeluaranId ? (
+                          <Button
+                            size="sm"
+                            leftIcon={<BsEyeFill />}
+                            colorScheme="purple"
+                            onClick={() =>
+                              history.push(
+                                `/pengeluaran/detail-pengeluaran/${item.pengeluaranId}`,
+                              )
+                            }
+                          >
+                            Pengeluaran #{item.pengeluaranId}
+                          </Button>
+                        ) : (
+                          <Text fontSize="sm" color="gray.500">
+                            -
+                          </Text>
+                        )}
+                        {item?.persediaanId ? (
+                          <Link
+                            to={`/aset/tracking-persediaan/${item.persediaanId}`}
+                          >
+                            <Button
+                              size="sm"
+                              leftIcon={<BsEyeFill />}
+                              colorScheme="blue"
+                            >
+                              Barang #{item.persediaanId}
+                            </Button>
+                          </Link>
+                        ) : null}
+                      </Flex>
+                    </Td>
                   </Tr>
                 ))}
               </Tbody>
@@ -506,7 +608,43 @@ function DetailLaporan(props) {
                   <Box bgColor={"aset"} width={"30px"} height={"30px"}></Box>
                   <Heading color={"aset"}>Tambah Barang</Heading>
                 </HStack>
-
+                <FormControl px={"30px"} pt={"30px"}>
+                  <FormLabel fontSize={"24px"}>Pengeluaran</FormLabel>
+                  <AsyncSelect
+                    loadOptions={loadPengeluaranOptions}
+                    cacheOptions
+                    defaultOptions={false}
+                    value={selectedPengeluaran}
+                    placeholder="Ketik deskripsi pengeluaran"
+                    onChange={(selectedOption) => {
+                      setSelectedPengeluaran(selectedOption);
+                      setPengeluaranId(selectedOption?.value || null);
+                    }}
+                    components={{
+                      DropdownIndicator: () => null,
+                      IndicatorSeparator: () => null,
+                    }}
+                    chakraStyles={{
+                      container: (provided) => ({
+                        ...provided,
+                        borderRadius: "6px",
+                      }),
+                      control: (provided) => ({
+                        ...provided,
+                        backgroundColor: "terang",
+                        border: "0px",
+                        height: "60px",
+                        _hover: { borderColor: "yellow.700" },
+                        minHeight: "40px",
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        bg: state.isFocused ? "aset" : "white",
+                        color: state.isFocused ? "white" : "black",
+                      }),
+                    }}
+                  />
+                </FormControl>
                 <SimpleGrid columns={2} spacing={10} p={"30px"}>
                   <FormControl my={"30px"}>
                     <FormLabel fontSize={"24px"}>Unit Kerja</FormLabel>
@@ -553,7 +691,7 @@ function DetailLaporan(props) {
                           const res = await axios.get(
                             `${
                               import.meta.env.VITE_REACT_APP_API_BASE_URL
-                            }/persediaan/search?q=${inputValue}`
+                            }/persediaan/search?q=${inputValue}`,
                           );
 
                           const filtered = res.data.result;

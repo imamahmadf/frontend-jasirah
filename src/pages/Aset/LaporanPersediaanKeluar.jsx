@@ -68,8 +68,11 @@ function LaporanPersediaanKeluar(props) {
   const [tujuan, setTujuan] = useState("");
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [maxKeluar, setMaxKeluar] = useState(0);
+  const [filterUnitKerjaId, setFilterUnitKerjaId] = useState(null);
+  const [dataUnitKerja, setDataUnitKerja] = useState([]);
   const user = useSelector(userRedux);
   const role = useSelector(selectRole);
+  const FILTER_ALL = "all";
   const {
     isOpen: isTambahOpen,
     onOpen: onTambahOpen,
@@ -94,18 +97,36 @@ function LaporanPersediaanKeluar(props) {
       setKeterangan(val);
     }
   };
-  async function fetchPersediaanKeluar() {
+  async function fetchUnitKerja() {
+    await axios
+      .get(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/admin/get/unit-kerja`
+      )
+      .then((res) => {
+        setDataUnitKerja(res.data.result);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }
+
+  async function fetchPersediaanKeluar(unitKerjaIdParam) {
+    const id = unitKerjaIdParam ?? filterUnitKerjaId;
+    if (!id) return;
+
     try {
+      const params = {
+        laporanId: props.match.params.id,
+      };
+      if (id !== FILTER_ALL) {
+        params.unitKerjaId = id;
+      }
+
       const response = await axios.get(
         `${
           import.meta.env.VITE_REACT_APP_API_BASE_URL
         }/persediaan/get/detail-keluar`,
-        {
-          params: {
-            unitKerjaId: user[0]?.unitKerja_profile?.id,
-            laporanId: props.match.params.id,
-          },
-        }
+        { params }
       );
 
       setDataPersediaan(response.data);
@@ -114,6 +135,11 @@ function LaporanPersediaanKeluar(props) {
       console.error(err);
     }
   }
+
+  const effectiveUnitKerjaId =
+    filterUnitKerjaId && filterUnitKerjaId !== FILTER_ALL
+      ? filterUnitKerjaId
+      : user[0]?.unitKerja_profile?.id;
 
   const handleTambahKeluar = (itemId, sisaStok) => {
     setSelectedItemId(itemId);
@@ -152,7 +178,7 @@ function LaporanPersediaanKeluar(props) {
           stokMasukId: selectedItemId,
           jumlah: parseInt(jumlahKeluar),
           tujuan: tujuan,
-          unitKerjaId: user[0]?.unitKerja_profile?.id,
+          unitKerjaId: effectiveUnitKerjaId,
           laporanPersediaanId: props.match.params.id,
           tanggal,
         }
@@ -338,8 +364,26 @@ function LaporanPersediaanKeluar(props) {
   };
 
   useEffect(() => {
-    fetchPersediaanKeluar();
-  }, [page]);
+    fetchUnitKerja();
+    const defaultUnitKerjaId = user[0]?.unitKerja_profile?.id;
+    if (defaultUnitKerjaId) {
+      setFilterUnitKerjaId(defaultUnitKerjaId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (filterUnitKerjaId) {
+      fetchPersediaanKeluar(filterUnitKerjaId);
+    }
+  }, [page, filterUnitKerjaId]);
+
+  const unitKerjaFilterOptions = [
+    { value: FILTER_ALL, label: "Semua Unit Kerja" },
+    ...(dataUnitKerja?.map((val) => ({
+      value: val.id,
+      label: val.unitKerja,
+    })) || []),
+  ];
   // Siapkan data terkelompok per persediaan, agar Nama Persediaan tidak berulang
   const grouped = Array.isArray(DataPersediaan?.data)
     ? DataPersediaan.data.map((item) => {
@@ -635,17 +679,61 @@ function LaporanPersediaanKeluar(props) {
           >
             <PageHeader />
 
-            <Stack mb={4} align={{ base: "stretch", md: "flex-end" }}>
+            <Flex
+              mb={4}
+              direction={{ base: "column", md: "row" }}
+              align={{ base: "stretch", md: "flex-end" }}
+              gap={4}
+            >
+              <FormControl maxW={{ base: "full", md: "320px" }}>
+                <FormLabel fontSize="sm">Filter Unit Kerja</FormLabel>
+                <Select2
+                  options={unitKerjaFilterOptions}
+                  placeholder="Pilih unit kerja"
+                  value={
+                    filterUnitKerjaId
+                      ? unitKerjaFilterOptions.find(
+                          (opt) => opt.value === filterUnitKerjaId
+                        ) || null
+                      : null
+                  }
+                  onChange={(selectedOption) => {
+                    setFilterUnitKerjaId(selectedOption?.value || null);
+                  }}
+                  components={{
+                    DropdownIndicator: () => null,
+                    IndicatorSeparator: () => null,
+                  }}
+                  chakraStyles={{
+                    container: (provided) => ({
+                      ...provided,
+                      borderRadius: "6px",
+                    }),
+                    control: (provided) => ({
+                      ...provided,
+                      backgroundColor: "terang",
+                      border: "0px",
+                      minHeight: "40px",
+                    }),
+                    option: (provided, state) => ({
+                      ...provided,
+                      bg: state.isFocused ? "aset" : "white",
+                      color: state.isFocused ? "white" : "black",
+                    }),
+                  }}
+                />
+              </FormControl>
               <Button
                 leftIcon={<BsFileEarmarkArrowDown />}
                 colorScheme="green"
                 onClick={downloadExcel}
                 size="md"
                 w={{ base: "full", md: "auto" }}
+                alignSelf={{ base: "stretch", md: "flex-end" }}
               >
                 Download Excel
               </Button>
-            </Stack>
+            </Flex>
 
             <Box display={{ base: "block", md: "none" }} mb={4}>
               {renderMobileCards()}

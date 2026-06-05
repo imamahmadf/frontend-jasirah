@@ -7,7 +7,7 @@ import LayoutAset from "../../Componets/Aset/LayoutAset";
 import ReactPaginate from "react-paginate";
 
 import "../../Style/pagination.css";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { BsFileEarmarkExcel } from "react-icons/bs";
 import Foto from "../../assets/add_photo.png";
 import {
@@ -51,6 +51,8 @@ import { useDisclosure } from "@chakra-ui/react";
 function DaftarPengeluaran() {
   const [dataPengeluaran, setDataPengeluaran] = useState([]);
   const history = useHistory();
+  const location = useLocation();
+  const pengeluaranIdFromUrlHandled = useRef(false);
   const token = localStorage.getItem("token");
   const [dataSeed, setDataSeed] = useState(null);
   const [page, setPage] = useState(0);
@@ -86,6 +88,7 @@ function DaftarPengeluaran() {
   const [previewFotoUrl, setPreviewFotoUrl] = useState("");
   const [selectedPengeluaran, setSelectedPengeluaran] = useState(null);
   const formikRefTambah = useRef(null);
+  const dataListRef = useRef(null);
 
   const initialValuesTambah = {
     tanggal: "",
@@ -184,8 +187,13 @@ function DaftarPengeluaran() {
     rekananId: Yup.mixed().nullable().required("Rekanan wajib dipilih"),
   });
 
+  const scrollToDataList = () => {
+    dataListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const changePage = ({ selected }) => {
     setPage(selected);
+    scrollToDataList();
   };
 
   const isStatusPaid = (item) => {
@@ -443,6 +451,25 @@ function DaftarPengeluaran() {
     setSelectedPengeluaran(item);
     onTambahOpen();
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const pengeluaranId = params.get("pengeluaranId");
+    if (!pengeluaranId) {
+      pengeluaranIdFromUrlHandled.current = false;
+      return;
+    }
+    if (!dataPengeluaran.length) return;
+
+    const item = dataPengeluaran.find(
+      (p) => String(p.id) === String(pengeluaranId),
+    );
+    if (item && !pengeluaranIdFromUrlHandled.current) {
+      pengeluaranIdFromUrlHandled.current = true;
+      openEditModal(item);
+      history.replace("/pengeluaran/daftar-pengeluaran");
+    }
+  }, [dataPengeluaran, location.search, history]);
 
   useEffect(() => {
     fetchSeed();
@@ -1085,6 +1112,7 @@ function DaftarPengeluaran() {
 
             <Divider mb={{ base: 4, md: "30px" }} />
 
+            <Box ref={dataListRef} scrollMarginTop="88px">
             {/* Mobile: kartu daftar */}
             <Box display={{ base: "block", md: "none" }} mb={4}>
               {renderMobileCards()}
@@ -1291,33 +1319,64 @@ function DaftarPengeluaran() {
                 </Tbody>
               </Table>
             </Box>
-
-            <Box
-              mt={{ base: 4, md: 6 }}
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              overflowX="auto"
-              px={{ base: 0, md: 0 }}
-              w="full"
-            >
-              <ReactPaginate
-                previousLabel={"←"}
-                nextLabel={"→"}
-                pageCount={pages}
-                onPageChange={changePage}
-                activeClassName={"item active "}
-                breakClassName={"item break-me "}
-                breakLabel={"..."}
-                containerClassName={"pagination"}
-                disabledClassName={"disabled-page"}
-                marginPagesDisplayed={1}
-                nextClassName={"item next "}
-                pageClassName={"item pagination-page "}
-                pageRangeDisplayed={2}
-                previousClassName={"item previous"}
-              />
             </Box>
+
+            {rows > 0 && (
+              <Flex
+                className="pengeluaran-pagination"
+                mt={{ base: 4, md: 6 }}
+                pt={4}
+                borderTop="1px solid"
+                borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+                direction={{ base: "column", md: "row" }}
+                justify={{ base: "center", md: "space-between" }}
+                align="center"
+                gap={{ base: 3, md: 4 }}
+                w="full"
+              >
+                <Text
+                  fontSize="sm"
+                  textAlign={{ base: "center", md: "left" }}
+                  color={colorMode === "dark" ? "gray.400" : "gray.600"}
+                >
+                  Menampilkan {page * limit + 1}–
+                  {Math.min((page + 1) * limit, rows)} dari {rows} data
+                  {pages > 1 && (
+                    <>
+                      {" "}
+                      · Halaman {page + 1} dari {pages}
+                    </>
+                  )}
+                </Text>
+                {pages > 1 && (
+                  <Box
+                    w={{ base: "full", md: "auto" }}
+                    overflowX="auto"
+                    display="flex"
+                    justifyContent={{ base: "center", md: "flex-end" }}
+                    py={1}
+                  >
+                    <ReactPaginate
+                      previousLabel={"←"}
+                      nextLabel={"→"}
+                      pageCount={pages}
+                      onPageChange={changePage}
+                      forcePage={page}
+                      activeClassName="item active"
+                      breakClassName="item break-me"
+                      breakLabel="..."
+                      containerClassName="pagination"
+                      disabledClassName="disabled-page"
+                      marginPagesDisplayed={1}
+                      nextClassName="item next"
+                      pageClassName="item pagination-page"
+                      pageRangeDisplayed={2}
+                      previousClassName="item previous"
+                    />
+                  </Box>
+                )}
+              </Flex>
+            )}
           </Box>
         </Box>
       </LayoutAset>

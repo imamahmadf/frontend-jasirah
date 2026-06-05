@@ -140,26 +140,60 @@
   transform: translateY(0);
 }
 
-/* Dark mode support (optional, bisa disesuaikan) */
-@media (prefers-color-scheme: dark) {
-  .item {
-    color: #e2e8f0;
-    background-color: #2d3748;
-    border-color: #4a5568;
+/* Dark mode — Chakra colorMode */
+[data-theme="dark"] .item:not(.active):not(.previous):not(.next) {
+  color: #e2e8f0;
+  background-color: #2d3748;
+  border-color: #4a5568;
+}
+
+[data-theme="dark"] .item:not(.active):not(.previous):not(.next):hover:not(.disabled-page) {
+  background-color: #374151;
+  border-color: #718096;
+}
+
+[data-theme="dark"] .disabled-page {
+  color: #718096;
+  background-color: #2d3748;
+  border-color: #4a5568;
+}
+
+[data-theme="dark"] .break-me {
+  color: #a0aec0;
+}
+
+/* Daftar Pengeluaran — layout pagination responsif */
+.pengeluaran-pagination .pagination {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 44px;
+  width: auto;
+  max-width: 100%;
+  gap: 6px;
+}
+
+.pengeluaran-pagination .previous,
+.pengeluaran-pagination .next {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.pengeluaran-pagination .item {
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .pengeluaran-pagination .item,
+  .pengeluaran-pagination .previous,
+  .pengeluaran-pagination .next,
+  .pengeluaran-pagination .break-me {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
   }
 
-  .item:hover:not(.disabled-page):not(.active) {
-    background-color: #374151;
-    border-color: #718096;
-  }
-
-  .disabled-page {
-    color: #718096;
-    background-color: #2d3748;
-    border-color: #4a5568;
-  }
-
-  .break-me {
-    color: #a0aec0;
+  .pengeluaran-pagination .previous,
+  .pengeluaran-pagination .next {
+    font-size: 16px;
   }
 }

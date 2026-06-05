@@ -145,6 +145,7 @@ import DetailPresensi from "./pages/Presensi/DetailPresensi.jsx";
 
 import DaftarPengeluaran from "./pages/Pengeluaran/DaftarPengeluaran.jsx";
 import DashboardPengeluaran from "./pages/Pengeluaran/DashboardPengeluaran.jsx";
+import DetailPengeluaran from "./pages/Pengeluaran/DetailPengeluaran.jsx";
 
 function App() {
   const dispatch = useDispatch();
@@ -864,6 +865,13 @@ function App() {
           <ProtectedRoute
             component={DashboardPengeluaran}
             path="/pengeluaran/dashboard"
+            exact
+            roleRoute={[5, 1]}
+          />
+
+          <ProtectedRoute
+            component={DetailPengeluaran}
+            path="/pengeluaran/detail-pengeluaran/:id"
             exact
             roleRoute={[5, 1]}
           />
