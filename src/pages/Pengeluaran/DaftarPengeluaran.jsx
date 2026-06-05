@@ -8,6 +8,7 @@ import ReactPaginate from "react-paginate";
 
 import "../../Style/pagination.css";
 import { useHistory, useLocation } from "react-router-dom";
+import { formatRupiah, parseRupiah } from "../../utils/formatRupiah";
 import { BsFileEarmarkExcel } from "react-icons/bs";
 import Foto from "../../assets/add_photo.png";
 import {
@@ -510,8 +511,6 @@ function DaftarPengeluaran() {
           year: "numeric",
         })
       : "-";
-
-  const formatRupiah = (n) => `Rp ${Number(n || 0).toLocaleString("id-ID")}`;
 
   const apiBaseUrl = import.meta.env.VITE_REACT_APP_API_BASE_URL;
 
@@ -1732,13 +1731,25 @@ function DaftarPengeluaran() {
                         <Input
                           bgColor={"terang"}
                           height={"50px"}
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           name="nominal"
-                          placeholder="Contoh: 250000"
-                          value={formik.values.nominal}
-                          onChange={(e) =>
-                            formik.setFieldValue("nominal", e.target.value)
+                          placeholder="Contoh: Rp 250.000"
+                          value={
+                            formik.values.nominal !== "" &&
+                            formik.values.nominal != null
+                              ? formatRupiah(formik.values.nominal)
+                              : ""
                           }
+                          onChange={(e) => {
+                            const parsed = parseRupiah(e.target.value);
+                            formik.setFieldValue(
+                              "nominal",
+                              e.target.value.replace(/[^0-9]/g, "") === ""
+                                ? ""
+                                : parsed,
+                            );
+                          }}
                           onBlur={() => formik.setFieldTouched("nominal", true)}
                         />
                         <FormErrorMessage>
