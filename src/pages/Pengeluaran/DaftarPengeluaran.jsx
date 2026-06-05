@@ -71,6 +71,8 @@ function DaftarPengeluaran() {
   const [statusPembayaranFilterId, setStatusPembayaranFilterId] = useState(0);
   const [tanggalAwal, setTanggalAwal] = useState("");
   const [tanggalAkhir, setTanggalAkhir] = useState("");
+  const [sortBy, setSortBy] = useState("tanggal");
+  const [sortOrder, setSortOrder] = useState("DESC");
 
   const toast = useToast();
   const { colorMode, toggleColorMode } = useColorMode();
@@ -170,7 +172,7 @@ function DaftarPengeluaran() {
       .nullable()
       .required("Unit Usaha wajib dipilih"),
     unitKerjaId: Yup.mixed().nullable().required("Proyek wajib dipilih"),
-    pegawaiId: Yup.mixed().nullable().required("Pegawai wajib dipilih"),
+    pegawaiId: Yup.mixed().nullable(),
     metodePembayaranId: Yup.mixed()
       .nullable()
       .required("Metode pembayaran wajib dipilih"),
@@ -249,6 +251,8 @@ function DaftarPengeluaran() {
     tanggalAwal,
     tanggalAkhir,
     rekananFilterId,
+    sortBy,
+    sortOrder,
   ]);
 
   const loadIndukUnitKerjaOptions = async (inputValue) => {
@@ -313,7 +317,7 @@ function DaftarPengeluaran() {
     setIsLoading(true);
     await axios
       .get(
-        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/pengeluaran/get?page=${page}&limit=${limit}&indukUnitKerjaId=${indukUnitKerjaFilterId}&unitKerjaId=${unitKerjaFilterId}&pegawaiId=${pegawaiFilterId}&rekananId=${rekananFilterId}&metodePembayaranId=${metodePembayaranFilterId}&jenisPengeluaranId=${jenisPengeluaranFilterId}&statusPembayaranId=${statusPembayaranFilterId}&startDate=${tanggalAwal}&endDate=${tanggalAkhir}`,
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/pengeluaran/get?page=${page}&limit=${limit}&indukUnitKerjaId=${indukUnitKerjaFilterId}&unitKerjaId=${unitKerjaFilterId}&pegawaiId=${pegawaiFilterId}&rekananId=${rekananFilterId}&metodePembayaranId=${metodePembayaranFilterId}&jenisPengeluaranId=${jenisPengeluaranFilterId}&statusPembayaranId=${statusPembayaranFilterId}&startDate=${tanggalAwal}&endDate=${tanggalAkhir}&sortBy=${sortBy}&sortOrder=${sortOrder}`,
       )
       .then((res) => {
         setDataPengeluaran(res.data.result || []);
@@ -349,7 +353,9 @@ function DaftarPengeluaran() {
       fd.append("metodePembayaranId", values.metodePembayaranId);
       fd.append("jenisPengeluaranId", values.jenisPengeluaranId);
       fd.append("nominal", values.nominal);
-      fd.append("pegawaiId", values.pegawaiId);
+      if (values.pegawaiId != null && values.pegawaiId !== "") {
+        fd.append("pegawaiId", values.pegawaiId);
+      }
       fd.append("statusPembayaranId", values.statusPembayaranId);
       if (values.rekananId != null && values.rekananId !== "") {
         fd.append("rekananId", String(values.rekananId));
@@ -403,7 +409,10 @@ function DaftarPengeluaran() {
       fd.append("metodePembayaranId", values.metodePembayaranId);
       fd.append("jenisPengeluaranId", values.jenisPengeluaranId);
       fd.append("nominal", values.nominal);
-      fd.append("pegawaiId", values.pegawaiId);
+      fd.append(
+        "pegawaiId",
+        values.pegawaiId != null ? String(values.pegawaiId) : "",
+      );
       fd.append("statusPembayaranId", values.statusPembayaranId);
       fd.append(
         "rekananId",
@@ -489,6 +498,8 @@ function DaftarPengeluaran() {
     tanggalAwal,
     tanggalAkhir,
     rekananFilterId,
+    sortBy,
+    sortOrder,
   ]);
 
   const formatTanggal = (d) =>
@@ -640,16 +651,28 @@ function DaftarPengeluaran() {
               </Box>
             )}
 
-            <Button
-              w="full"
-              mt={4}
-              size="sm"
-              variant="outline"
-              colorScheme="blue"
-              onClick={() => openEditModal(item)}
-            >
-              Edit
-            </Button>
+            <HStack mt={4} spacing={2}>
+              <Button
+                flex={1}
+                size="sm"
+                variant="outline"
+                colorScheme="blue"
+                onClick={() => openEditModal(item)}
+              >
+                Edit
+              </Button>
+              <Button
+                flex={1}
+                size="sm"
+                variant="outline"
+                colorScheme="teal"
+                onClick={() =>
+                  history.push(`/pengeluaran/detail-pengeluaran/${item.id}`)
+                }
+              >
+                Detail
+              </Button>
+            </HStack>
           </Box>
         </Box>
       );
@@ -1077,6 +1100,104 @@ function DaftarPengeluaran() {
                     onChange={(e) => setTanggalAkhir(e.target.value)}
                   />
                 </FormControl>
+
+                <FormControl>
+                  <FormLabel fontSize={"16px"} fontWeight="medium">
+                    Urutkan Berdasarkan
+                  </FormLabel>
+                  <Select2
+                    options={[
+                      { value: "tanggal", label: "Tanggal" },
+                      { value: "nominal", label: "Nominal" },
+                    ]}
+                    value={{
+                      value: sortBy,
+                      label: sortBy === "nominal" ? "Nominal" : "Tanggal",
+                    }}
+                    onChange={(selectedOption) =>
+                      setSortBy(selectedOption?.value || "tanggal")
+                    }
+                    components={{
+                      DropdownIndicator: () => null,
+                      IndicatorSeparator: () => null,
+                    }}
+                    chakraStyles={{
+                      container: (provided) => ({
+                        ...provided,
+                        borderRadius: "6px",
+                      }),
+                      control: (provided) => ({
+                        ...provided,
+                        backgroundColor: "terang",
+                        border: "0px",
+                        height: "60px",
+                        _hover: { borderColor: "yellow.700" },
+                        minHeight: "40px",
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        bg: state.isFocused ? "aset" : "white",
+                        color: state.isFocused ? "white" : "black",
+                      }),
+                    }}
+                  />
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel fontSize={"16px"} fontWeight="medium">
+                    Urutan
+                  </FormLabel>
+                  <Select2
+                    options={
+                      sortBy === "nominal"
+                        ? [
+                            { value: "DESC", label: "Nominal Terbesar" },
+                            { value: "ASC", label: "Nominal Terkecil" },
+                          ]
+                        : [
+                            { value: "DESC", label: "Tanggal Terbaru" },
+                            { value: "ASC", label: "Tanggal Terlama" },
+                          ]
+                    }
+                    value={{
+                      value: sortOrder,
+                      label:
+                        sortBy === "nominal"
+                          ? sortOrder === "ASC"
+                            ? "Nominal Terkecil"
+                            : "Nominal Terbesar"
+                          : sortOrder === "ASC"
+                            ? "Tanggal Terlama"
+                            : "Tanggal Terbaru",
+                    }}
+                    onChange={(selectedOption) =>
+                      setSortOrder(selectedOption?.value || "DESC")
+                    }
+                    components={{
+                      DropdownIndicator: () => null,
+                      IndicatorSeparator: () => null,
+                    }}
+                    chakraStyles={{
+                      container: (provided) => ({
+                        ...provided,
+                        borderRadius: "6px",
+                      }),
+                      control: (provided) => ({
+                        ...provided,
+                        backgroundColor: "terang",
+                        border: "0px",
+                        height: "60px",
+                        _hover: { borderColor: "yellow.700" },
+                        minHeight: "40px",
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        bg: state.isFocused ? "aset" : "white",
+                        color: state.isFocused ? "white" : "black",
+                      }),
+                    }}
+                  />
+                </FormControl>
               </SimpleGrid>
 
               {(indukUnitKerjaFilterId ||
@@ -1087,7 +1208,9 @@ function DaftarPengeluaran() {
                 jenisPengeluaranFilterId ||
                 statusPembayaranFilterId ||
                 tanggalAwal ||
-                tanggalAkhir) && (
+                tanggalAkhir ||
+                sortBy !== "tanggal" ||
+                sortOrder !== "DESC") && (
                 <Button
                   mt={4}
                   size="sm"
@@ -1103,6 +1226,8 @@ function DaftarPengeluaran() {
                     setStatusPembayaranFilterId(0);
                     setTanggalAwal("");
                     setTanggalAkhir("");
+                    setSortBy("tanggal");
+                    setSortOrder("DESC");
                   }}
                 >
                   Reset Filter
@@ -1289,14 +1414,28 @@ function DaftarPengeluaran() {
                             )}
                           </Td>
                           <Td>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              colorScheme="blue"
-                              onClick={() => openEditModal(item)}
-                            >
-                              Edit
-                            </Button>
+                            <HStack spacing={2}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                colorScheme="blue"
+                                onClick={() => openEditModal(item)}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                colorScheme="teal"
+                                onClick={() =>
+                                  history.push(
+                                    `/pengeluaran/detail-pengeluaran/${item.id}`,
+                                  )
+                                }
+                              >
+                                Detail
+                              </Button>
+                            </HStack>
                           </Td>
                         </Tr>
                       );
@@ -1778,9 +1917,13 @@ function DaftarPengeluaran() {
                         }
                       >
                         <FormLabel fontSize={"16px"} fontWeight="medium">
-                          Pegawai
+                          Pegawai{" "}
+                          <Text as="span" fontWeight="normal" color="gray.500">
+                            (opsional)
+                          </Text>
                         </FormLabel>
                         <AsyncSelect
+                          isClearable
                           loadOptions={async (inputValue) => {
                             if (!inputValue) return [];
                             try {
