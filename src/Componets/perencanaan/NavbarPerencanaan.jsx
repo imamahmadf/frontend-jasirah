@@ -131,7 +131,7 @@ function NavbarPerencanaan() {
     // Validasi: Pastikan environment variable sudah diset (penting untuk produksi)
     if (!socketUrl) {
       console.error(
-        "⚠️ VITE_REACT_APP_API_BASE_URL tidak diset! Socket.io tidak dapat terhubung."
+        "⚠️ VITE_REACT_APP_API_BASE_URL tidak diset! Socket.io tidak dapat terhubung.",
       );
       return; // Jangan inisialisasi socket jika URL tidak ada
     }
@@ -139,7 +139,7 @@ function NavbarPerencanaan() {
     // Peringatan jika masih menggunakan localhost di produksi
     if (socketUrl.includes("localhost") && import.meta.env.PROD) {
       console.warn(
-        "⚠️ PERINGATAN: Menggunakan localhost di produksi! Pastikan environment variable sudah diset dengan benar."
+        "⚠️ PERINGATAN: Menggunakan localhost di produksi! Pastikan environment variable sudah diset dengan benar.",
       );
     }
 
@@ -396,7 +396,7 @@ function NavbarPerencanaan() {
               zIndex={1}
             >
               {/* Logo dan Brand */}
-              <Flex gap={3} alignItems="center" flexShrink={0}>
+              {/* <Flex gap={3} alignItems="center" flexShrink={0}>
                 <Box
                   display="flex"
                   alignItems="center"
@@ -437,7 +437,7 @@ function NavbarPerencanaan() {
                     Kabupaten Paser
                   </Text>
                 </Box>
-              </Flex>
+              </Flex> */}
             </Flex>
 
             {/* Center Section: Menu Navigation - Hidden on mobile, positioned absolutely in center */}
@@ -456,7 +456,13 @@ function NavbarPerencanaan() {
             </Box>
 
             {/* Right Section: User Menu (Desktop) dan Hamburger (Mobile) */}
-            <HStack spacing={3} flexShrink={0} position="relative" zIndex={1} ml="auto">
+            <HStack
+              spacing={3}
+              flexShrink={0}
+              position="relative"
+              zIndex={1}
+              ml="auto"
+            >
               {/* Color Mode Toggle - Hidden on mobile */}
               <IconButton
                 display={{ base: "none", lg: "flex" }}
@@ -659,10 +665,11 @@ function NavbarPerencanaan() {
                 icon={<FaBars />}
                 size="md"
                 variant="ghost"
-                color="white"
+                color="black"
                 onClick={() => setIsDrawerOpen(true)}
                 _hover={{
-                  bg: "rgba(255, 255, 255, 0.15)",
+                  bg: "gray.100",
+                  color: "black",
                   transform: "scale(1.1)",
                 }}
                 transition="all 0.2s ease"
@@ -939,7 +946,7 @@ function NavbarPerencanaan() {
                       ? index.length > 0
                         ? index[0]
                         : -1
-                      : index
+                      : index,
                   );
                 }}
               >

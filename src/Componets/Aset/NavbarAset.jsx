@@ -692,10 +692,11 @@ function NavbarAset() {
                 icon={<FaBars />}
                 size="md"
                 variant="ghost"
-                color="white"
+                color="black"
                 onClick={() => setIsDrawerOpen(true)}
                 _hover={{
-                  bg: "rgba(255, 255, 255, 0.15)",
+                  bg: "gray.100",
+                  color: "black",
                   transform: "scale(1.1)",
                 }}
                 transition="all 0.2s ease"
@@ -720,7 +721,7 @@ function NavbarAset() {
             borderBottom="1px solid"
             borderColor="rgba(0,0,0,0.1)"
           >
-            <Flex gap={3} alignItems="center">
+            {/* <Flex gap={3} alignItems="center">
               <Image height="32px" src={LogoAset} alt="Logo Pena" />
               <Image height="32px" src={Logo} alt="Logo Dinkes" />
               <Box>
@@ -731,7 +732,7 @@ function NavbarAset() {
                   Kabupaten Paser
                 </Text>
               </Box>
-            </Flex>
+            </Flex> */}
           </DrawerHeader>
 
           <DrawerBody

@@ -30,6 +30,15 @@ import {
   Select,
   VStack,
   useDisclosure,
+  Flex,
+  Stack,
+  Card,
+  CardBody,
+  CardHeader,
+  Divider,
+  SimpleGrid,
+  useMediaQuery,
+  useColorMode,
 } from "@chakra-ui/react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
@@ -61,6 +70,13 @@ function DetailPresensi() {
     onClose: onCloseModalPresensi,
   } = useDisclosure();
   const toast = useToast();
+  const [isMobile] = useMediaQuery("(max-width: 768px)");
+  const { colorMode } = useColorMode();
+
+  const cardBg = colorMode === "dark" ? "gray.800" : "white";
+  const cardBorder = colorMode === "dark" ? "gray.700" : "gray.200";
+  const labelColor = colorMode === "dark" ? "gray.400" : "gray.600";
+  const valueColor = colorMode === "dark" ? "gray.300" : "gray.700";
 
   const formattedTanggal = useMemo(() => {
     if (!tanggal) return "-";
@@ -525,35 +541,330 @@ function DetailPresensi() {
     getDetailPresensi();
   }, [tanggal]);
 
+  const CardField = ({ label, children }) => (
+    <Box>
+      <Text fontSize="xs" fontWeight="semibold" color={labelColor} mb={1}>
+        {label}
+      </Text>
+      <Box fontSize="sm" color={valueColor}>
+        {children}
+      </Box>
+    </Box>
+  );
+
+  const renderAksiPegawai = (pegawai, ctx) => {
+    const { isEditing, bisaDipilih, isSelected } = ctx;
+
+    if (isModeBuatPresensi) {
+      return (
+        <Text fontSize="xs" color="gray.500">
+          {!bisaDipilih
+            ? "Jam masuk & pulang sudah ada"
+            : isSelected
+              ? "Siap disimpan"
+              : "Belum dipilih"}
+        </Text>
+      );
+    }
+
+    if (isEditing) {
+      return (
+        <Stack direction={{ base: "column", sm: "row" }} spacing={2} w="100%">
+          <Button
+            size="sm"
+            colorScheme="blue"
+            isLoading={Boolean(savingByPegawai[pegawai?.id])}
+            onClick={() => handleSimpanPresensi(pegawai)}
+            flex={{ base: 1, sm: "none" }}
+          >
+            Simpan
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleBatalEdit(pegawai)}
+            isDisabled={Boolean(savingByPegawai[pegawai?.id])}
+            flex={{ base: 1, sm: "none" }}
+          >
+            Batal
+          </Button>
+        </Stack>
+      );
+    }
+
+    return (
+      <Button
+        size="sm"
+        colorScheme="yellow"
+        variant="outline"
+        onClick={() => handleMulaiEdit(pegawai?.id)}
+        w={{ base: "100%", md: "auto" }}
+      >
+        Edit
+      </Button>
+    );
+  };
+
+  const renderPegawaiFields = (pegawai, ctx) => {
+    const { presensi, isInputEnabled, statusLabel, formStatusId } = ctx;
+
+    return {
+      jamMasuk: isInputEnabled ? (
+        <Input
+          size="sm"
+          type="time"
+          step={1}
+          value={formByPegawai[pegawai?.id]?.jamMasuk || ""}
+          onChange={(e) =>
+            handleChangeJam(pegawai?.id, "jamMasuk", e.target.value)
+          }
+        />
+      ) : (
+        formatJam(presensi?.jamMasuk)
+      ),
+      jamPulang: isInputEnabled ? (
+        <Input
+          size="sm"
+          type="time"
+          step={1}
+          value={formByPegawai[pegawai?.id]?.jamPulang || ""}
+          onChange={(e) =>
+            handleChangeJam(pegawai?.id, "jamPulang", e.target.value)
+          }
+        />
+      ) : (
+        formatJam(presensi?.jamPulang)
+      ),
+      status: isInputEnabled ? (
+        <Select
+          size="sm"
+          placeholder={
+            loadingStatusPresensi ? "Memuat..." : "Pilih status"
+          }
+          value={formStatusId}
+          onChange={(e) =>
+            handleChangeJam(
+              pegawai?.id,
+              "statusPresensiId",
+              e.target.value,
+            )
+          }
+          isDisabled={loadingStatusPresensi}
+        >
+          {statusPresensiList.map((status) => (
+            <option key={status.id} value={status.id}>
+              {getStatusLabel(status, null) || `Status ${status.id}`}
+            </option>
+          ))}
+        </Select>
+      ) : (
+        <Badge
+          colorScheme={presensi ? "green" : "orange"}
+          borderRadius="md"
+          px={2}
+        >
+          {statusLabel}
+        </Badge>
+      ),
+      lembur: isInputEnabled ? (
+        <Input
+          size="sm"
+          type="number"
+          min={0}
+          step={1}
+          placeholder="Nominal lembur"
+          value={formByPegawai[pegawai?.id]?.lemburHarian ?? ""}
+          onChange={(e) =>
+            handleChangeJam(pegawai?.id, "lemburHarian", e.target.value)
+          }
+        />
+      ) : (
+        formatLemburHarianNominal(presensi?.lemburHarian)
+      ),
+    };
+  };
+
+  const getPegawaiCtx = (pegawai, index) => {
+    const presensi = pegawai?.presensis?.[0] || null;
+    const isEditing = Boolean(editingByPegawai[pegawai?.id]);
+    const isSelected = Boolean(selectedPegawaiIds[pegawai?.id]);
+    const bisaDipilih = bisaDipilihBuatPresensi(pegawai);
+    const isInputEnabled = isEditing && !isModeBuatPresensi;
+    const statusObj = presensi?.statusPresensi || {};
+    const formStatusId = formByPegawai[pegawai?.id]?.statusPresensiId ?? "";
+    const statusLabel = getStatusLabel(statusObj, presensi);
+    const fields = renderPegawaiFields(pegawai, {
+      presensi,
+      isInputEnabled,
+      statusLabel,
+      formStatusId,
+    });
+
+    return {
+      presensi,
+      isEditing,
+      isSelected,
+      bisaDipilih,
+      isInputEnabled,
+      statusLabel,
+      formStatusId,
+      fields,
+      index,
+    };
+  };
+
+  const PegawaiPresensiCard = ({ pegawai, index }) => {
+    const ctx = getPegawaiCtx(pegawai, index);
+    const {
+      presensi,
+      isEditing,
+      isSelected,
+      bisaDipilih,
+      statusLabel,
+      fields,
+    } = ctx;
+
+    return (
+      <Card
+        mb={4}
+        bg={cardBg}
+        border="1px solid"
+        borderColor={cardBorder}
+        borderRadius="12px"
+        boxShadow="sm"
+      >
+        <CardHeader
+          pb={3}
+          borderBottom="1px solid"
+          borderColor={cardBorder}
+        >
+          <Flex justify="space-between" align="flex-start" gap={3}>
+            <VStack align="start" spacing={1} flex={1} minW={0}>
+              <HStack spacing={2} w="100%">
+                {isModeBuatPresensi ? (
+                  !bisaDipilih ? (
+                    <Text fontSize="xs" color="gray.500" flexShrink={0}>
+                      Jam lengkap
+                    </Text>
+                  ) : (
+                    <Checkbox
+                      isChecked={isSelected}
+                      onChange={(e) =>
+                        handleTogglePilihPegawai(pegawai, e.target.checked)
+                      }
+                      flexShrink={0}
+                    />
+                  )
+                ) : null}
+                <Text
+                  fontSize="md"
+                  fontWeight="bold"
+                  color={colorMode === "dark" ? "white" : "gray.800"}
+                  noOfLines={2}
+                >
+                  {pegawai?.namaPegawai || pegawai?.nama || "-"}
+                </Text>
+              </HStack>
+              <Text fontSize="xs" color="gray.500">
+                No. {index + 1} · NIP {pegawai?.nip || "-"}
+              </Text>
+            </VStack>
+            {!isEditing && !isModeBuatPresensi ? (
+              <Badge
+                colorScheme={presensi ? "green" : "orange"}
+                borderRadius="md"
+                px={2}
+                flexShrink={0}
+              >
+                {statusLabel}
+              </Badge>
+            ) : null}
+          </Flex>
+        </CardHeader>
+
+        <CardBody pt={4}>
+          <VStack align="stretch" spacing={3}>
+            <CardField label="Unit Kerja">
+              {getUnitKerjaLabel(presensi)}
+            </CardField>
+
+            <SimpleGrid columns={2} spacing={3}>
+              <CardField label="Jam Masuk">{fields.jamMasuk}</CardField>
+              <CardField label="Jam Pulang">{fields.jamPulang}</CardField>
+            </SimpleGrid>
+
+            <SimpleGrid columns={2} spacing={3}>
+              <CardField label="Jam Kerja">
+                {presensi?.jamKerja != null
+                  ? `${presensi.jamKerja / 60} jam`
+                  : "-"}
+              </CardField>
+              <CardField label="Upah Lembur">{fields.lembur}</CardField>
+            </SimpleGrid>
+
+            {isEditing && (
+              <CardField label="Status Presensi">{fields.status}</CardField>
+            )}
+
+            <Divider borderColor={cardBorder} />
+
+            {renderAksiPegawai(pegawai, ctx)}
+          </VStack>
+        </CardBody>
+      </Card>
+    );
+  };
+
   return (
     <LayoutPegawai>
-      <Box bgColor={"secondary"} pb={"40px"} px={"30px"} minH={"60vh"}>
-        <Container maxW={"1280px"} variant={"primary"} p={"30px"} my={"30px"}>
-          <Heading size="md" mb={4}>
-            Detail Presensi
-          </Heading>
-          <Text mb={4}>
-            Tanggal dipilih: <b>{formattedTanggal}</b>
-          </Text>
-          <HStack mb={4} spacing={3}>
-            <Button
-              size="sm"
-              colorScheme={isModeBuatPresensi ? "red" : "teal"}
-              variant={isModeBuatPresensi ? "outline" : "solid"}
-              onClick={handleToggleModeBuatPresensi}
+      <Box
+        bgColor="secondary"
+        pb={{ base: "20px", md: "40px" }}
+        px={{ base: "16px", md: "30px" }}
+        minH="60vh"
+      >
+        <Container
+          maxW="1280px"
+          variant="primary"
+          p={{ base: "16px", md: "30px" }}
+          my={{ base: "16px", md: "30px" }}
+        >
+          <VStack align="stretch" spacing={4} mb={4}>
+            <Box>
+              <Heading size={{ base: "sm", md: "md" }} mb={2}>
+                Detail Presensi
+              </Heading>
+              <Text fontSize={{ base: "sm", md: "md" }}>
+                Tanggal dipilih: <b>{formattedTanggal}</b>
+              </Text>
+            </Box>
+
+            <Stack
+              direction={{ base: "column", sm: "row" }}
+              spacing={3}
+              w="100%"
             >
-              {isModeBuatPresensi ? "Batal Buat Presensi" : "Buat Presensi"}
-            </Button>
-            {isModeBuatPresensi ? (
               <Button
                 size="sm"
-                colorScheme="blue"
-                onClick={handleBukaModalPresensi}
+                colorScheme={isModeBuatPresensi ? "red" : "teal"}
+                variant={isModeBuatPresensi ? "outline" : "solid"}
+                onClick={handleToggleModeBuatPresensi}
+                w={{ base: "100%", sm: "auto" }}
               >
-                Simpan Presensi Terpilih
+                {isModeBuatPresensi ? "Batal Buat Presensi" : "Buat Presensi"}
               </Button>
-            ) : null}
-          </HStack>
+              {isModeBuatPresensi ? (
+                <Button
+                  size="sm"
+                  colorScheme="blue"
+                  onClick={handleBukaModalPresensi}
+                  w={{ base: "100%", sm: "auto" }}
+                >
+                  Simpan Presensi Terpilih
+                </Button>
+              ) : null}
+            </Stack>
+          </VStack>
 
           {loading ? (
             <Center py={8}>
@@ -561,8 +872,23 @@ function DetailPresensi() {
             </Center>
           ) : errorMessage ? (
             <Text color="red.500">{errorMessage}</Text>
+          ) : dataPegawai.length === 0 ? (
+            <Center py={12}>
+              <Text color="gray.500">Data presensi tidak ditemukan.</Text>
+            </Center>
+          ) : isMobile ? (
+            <Box>
+              {dataPegawai.map((pegawai, index) => (
+                <PegawaiPresensiCard
+                  key={pegawai?.id || `pegawai-${index}`}
+                  pegawai={pegawai}
+                  index={index}
+                />
+              ))}
+            </Box>
           ) : (
-            <Table size="sm" variant="simple">
+            <Box overflowX="auto" mx={{ base: -2, md: 0 }}>
+            <Table size="sm" variant="simple" minW="960px">
               <Thead>
                 <Tr>
                   <Th>No</Th>
@@ -571,214 +897,68 @@ function DetailPresensi() {
                   <Th>NIP</Th>
                   <Th>Unit Kerja</Th>
                   <Th>Jam Masuk</Th>
-                  <Th>Jam Pulang</Th> <Th>Jam Kerja</Th>
+                  <Th>Jam Pulang</Th>
+                  <Th>Jam Kerja</Th>
                   <Th>Status Presensi</Th>
                   <Th>Upah lembur</Th>
                   <Th>Aksi</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {dataPegawai.length === 0 ? (
-                  <Tr>
-                    <Td
-                      colSpan={isModeBuatPresensi ? 11 : 10}
-                      textAlign="center"
-                    >
-                      Data presensi tidak ditemukan.
-                    </Td>
-                  </Tr>
-                ) : (
-                  dataPegawai.map((pegawai, index) => {
-                    const presensi = pegawai?.presensis?.[0] || null;
-                    const isEditing = Boolean(editingByPegawai[pegawai?.id]);
-                    const isSelected = Boolean(selectedPegawaiIds[pegawai?.id]);
-                    const bisaDipilih = bisaDipilihBuatPresensi(pegawai);
-                    const isInputEnabled = isEditing && !isModeBuatPresensi;
-                    const statusObj = presensi?.statusPresensi || {};
-                    const formStatusId =
-                      formByPegawai[pegawai?.id]?.statusPresensiId ?? "";
-                    const statusLabel = getStatusLabel(statusObj, presensi);
+                {dataPegawai.map((pegawai, index) => {
+                  const ctx = getPegawaiCtx(pegawai, index);
+                  const {
+                    presensi,
+                    isSelected,
+                    bisaDipilih,
+                    fields,
+                  } = ctx;
 
-                    return (
-                      <Tr key={pegawai?.id || `pegawai-${index}`}>
-                        <Td>{index + 1}</Td>
-                        {isModeBuatPresensi ? (
-                          <Td>
-                            {!bisaDipilih ? (
-                              <Text fontSize="xs" color="gray.500">
-                                Jam lengkap
-                              </Text>
-                            ) : (
-                              <Checkbox
-                                isChecked={isSelected}
-                                onChange={(e) =>
-                                  handleTogglePilihPegawai(
-                                    pegawai,
-                                    e.target.checked,
-                                  )
-                                }
-                              />
-                            )}
-                          </Td>
-                        ) : null}
-                        <Td>{pegawai?.namaPegawai || pegawai?.nama || "-"}</Td>
-                        <Td>{pegawai?.nip || "-"}</Td>
-                        <Td>{getUnitKerjaLabel(presensi)}</Td>
+                  return (
+                    <Tr key={pegawai?.id || `pegawai-${index}`}>
+                      <Td>{index + 1}</Td>
+                      {isModeBuatPresensi ? (
                         <Td>
-                          {isInputEnabled ? (
-                            <Input
-                              size="sm"
-                              type="time"
-                              step={1}
-                              value={formByPegawai[pegawai?.id]?.jamMasuk || ""}
-                              onChange={(e) =>
-                                handleChangeJam(
-                                  pegawai?.id,
-                                  "jamMasuk",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          ) : (
-                            formatJam(presensi?.jamMasuk)
-                          )}
-                        </Td>
-                        <Td>
-                          {isInputEnabled ? (
-                            <Input
-                              size="sm"
-                              type="time"
-                              step={1}
-                              value={
-                                formByPegawai[pegawai?.id]?.jamPulang || ""
-                              }
-                              onChange={(e) =>
-                                handleChangeJam(
-                                  pegawai?.id,
-                                  "jamPulang",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          ) : (
-                            formatJam(presensi?.jamPulang)
-                          )}
-                        </Td>{" "}
-                        <Td>{presensi?.jamKerja / 60} jam </Td>
-                        <Td>
-                          {isInputEnabled ? (
-                            <Select
-                              size="sm"
-                              placeholder={
-                                loadingStatusPresensi
-                                  ? "Memuat..."
-                                  : "Pilih status"
-                              }
-                              value={formStatusId}
-                              onChange={(e) =>
-                                handleChangeJam(
-                                  pegawai?.id,
-                                  "statusPresensiId",
-                                  e.target.value,
-                                )
-                              }
-                              isDisabled={loadingStatusPresensi}
-                            >
-                              {statusPresensiList.map((status) => (
-                                <option key={status.id} value={status.id}>
-                                  {getStatusLabel(status, null) ||
-                                    `Status ${status.id}`}
-                                </option>
-                              ))}
-                            </Select>
-                          ) : (
-                            <Badge
-                              colorScheme={presensi ? "green" : "orange"}
-                              borderRadius="md"
-                              px={2}
-                            >
-                              {statusLabel}
-                            </Badge>
-                          )}
-                        </Td>
-                        <Td>
-                          {isInputEnabled ? (
-                            <Input
-                              size="sm"
-                              type="number"
-                              min={0}
-                              step={1}
-                              placeholder="Nominal lembur"
-                              value={
-                                formByPegawai[pegawai?.id]?.lemburHarian ?? ""
-                              }
-                              onChange={(e) =>
-                                handleChangeJam(
-                                  pegawai?.id,
-                                  "lemburHarian",
-                                  e.target.value,
-                                )
-                              }
-                            />
-                          ) : (
-                            formatLemburHarianNominal(presensi?.lemburHarian)
-                          )}
-                        </Td>
-                        <Td>
-                          <HStack spacing={2}>
-                            {isModeBuatPresensi ? (
-                              <Text fontSize="xs" color="gray.500">
-                                {!bisaDipilih
-                                  ? "Jam masuk & pulang sudah ada"
-                                  : isSelected
-                                    ? "Siap disimpan"
-                                    : "Belum dipilih"}
-                              </Text>
-                            ) : isEditing ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  colorScheme="blue"
-                                  isLoading={Boolean(
-                                    savingByPegawai[pegawai?.id],
-                                  )}
-                                  onClick={() => handleSimpanPresensi(pegawai)}
-                                >
-                                  Simpan
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleBatalEdit(pegawai)}
-                                  isDisabled={Boolean(
-                                    savingByPegawai[pegawai?.id],
-                                  )}
-                                >
-                                  Batal
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                size="sm"
-                                colorScheme="yellow"
-                                variant="outline"
-                                onClick={() => handleMulaiEdit(pegawai?.id)}
-                              >
-                                Edit
-                              </Button>
-                            )}
+                          {!bisaDipilih ? (
                             <Text fontSize="xs" color="gray.500">
-                              {formatJam(presensi?.jamMasuk)} -{" "}
-                              {formatJam(presensi?.jamPulang)}
+                              Jam lengkap
                             </Text>
-                          </HStack>
+                          ) : (
+                            <Checkbox
+                              isChecked={isSelected}
+                              onChange={(e) =>
+                                handleTogglePilihPegawai(
+                                  pegawai,
+                                  e.target.checked,
+                                )
+                              }
+                            />
+                          )}
                         </Td>
-                      </Tr>
-                    );
-                  })
-                )}
+                      ) : null}
+                      <Td whiteSpace="nowrap">
+                        {pegawai?.namaPegawai || pegawai?.nama || "-"}
+                      </Td>
+                      <Td whiteSpace="nowrap">{pegawai?.nip || "-"}</Td>
+                      <Td>{getUnitKerjaLabel(presensi)}</Td>
+                      <Td whiteSpace="nowrap">{fields.jamMasuk}</Td>
+                      <Td whiteSpace="nowrap">{fields.jamPulang}</Td>
+                      <Td whiteSpace="nowrap">
+                        {presensi?.jamKerja != null
+                          ? `${presensi.jamKerja / 60} jam`
+                          : "-"}
+                      </Td>
+                      <Td>{fields.status}</Td>
+                      <Td whiteSpace="nowrap">{fields.lembur}</Td>
+                      <Td>
+                        {renderAksiPegawai(pegawai, ctx)}
+                      </Td>
+                    </Tr>
+                  );
+                })}
               </Tbody>
             </Table>
+            </Box>
           )}
         </Container>
       </Box>
@@ -786,12 +966,19 @@ function DetailPresensi() {
       <Modal
         isOpen={isModalPresensiOpen}
         onClose={onCloseModalPresensi}
-        isCentered
-        size="md"
+        isCentered={!isMobile}
+        size={{ base: "full", md: "md" }}
+        scrollBehavior="inside"
       >
         <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Buat Presensi</ModalHeader>
+        <ModalContent
+          m={{ base: 0, md: "auto" }}
+          borderRadius={{ base: 0, md: "md" }}
+          maxH={{ base: "100dvh", md: "auto" }}
+        >
+          <ModalHeader fontSize={{ base: "md", md: "lg" }}>
+            Buat Presensi
+          </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <VStack spacing={4} align="stretch">
@@ -859,12 +1046,16 @@ function DetailPresensi() {
             </VStack>
           </ModalBody>
 
-          <ModalFooter>
+          <ModalFooter
+            flexDirection={{ base: "column-reverse", sm: "row" }}
+            gap={{ base: 2, sm: 0 }}
+          >
             <Button
               variant="outline"
-              mr={3}
+              mr={{ base: 0, sm: 3 }}
               onClick={onCloseModalPresensi}
               isDisabled={isSubmittingBulk}
+              w={{ base: "100%", sm: "auto" }}
             >
               Batal
             </Button>
@@ -872,6 +1063,7 @@ function DetailPresensi() {
               colorScheme="blue"
               onClick={handleKonfirmasiSimpanPresensi}
               isLoading={isSubmittingBulk}
+              w={{ base: "100%", sm: "auto" }}
             >
               Simpan
             </Button>
