@@ -33,9 +33,6 @@ import {
   useToast,
   IconButton,
   Badge,
-  Divider,
-  Grid,
-  GridItem,
   Input,
 } from "@chakra-ui/react";
 import { BsPencilFill, BsTrashFill } from "react-icons/bs";
@@ -82,81 +79,6 @@ const formatPeriode = (periode) => {
   return `${namaBulan[m - 1]} ${year}`;
 };
 
-const formatAngka = (value) => {
-  const num = Number(value);
-  if (value == null || value === "" || Number.isNaN(num) || num === 0)
-    return "-";
-  return new Intl.NumberFormat("id-ID").format(num);
-};
-
-const TUNJANGAN_TETAP_SLOTS = [
-  { label: "Tunj. Transport", match: /transport/i },
-  { label: "Tunj. Makan", match: /makan/i },
-  { label: "Tunj. Keluarga", match: /keluarga/i },
-  { label: "Tunj. Jabatan", match: /jabatan/i },
-  { label: "Tunj Lain", match: null },
-];
-
-const POTONGAN_SLOTS = [
-  { label: "Bpjs TK", match: /bpjs\s*tk|jht|ketenagakerjaan/i },
-  { label: "Bpjs Kes", match: /bpjs\s*kes|kesehatan/i },
-  { label: "PPh 21", match: /pph|pajak/i },
-  { label: "Pot. Lain-Lain", match: /lain/i },
-];
-
-const isLembur = (nama) => /lembur/i.test(nama || "");
-
-const mapTunjanganTetapRows = (items) => {
-  const list = normalizeList(items).filter((i) => !isLembur(i.nama));
-  const usedIds = new Set();
-  const rows = TUNJANGAN_TETAP_SLOTS.map((slot) => {
-    let found = null;
-    if (slot.match) {
-      found = list.find(
-        (i) => slot.match.test(i.nama || "") && !usedIds.has(i.id),
-      );
-    }
-    if (found) usedIds.add(found.id);
-    return { label: slot.label, nominal: found ? Number(found.nominal) : null };
-  });
-  const unmatched = list.filter((i) => !usedIds.has(i.id));
-  if (unmatched.length) {
-    const lainSum = unmatched.reduce((s, i) => s + Number(i.nominal || 0), 0);
-    const lainIdx = rows.findIndex((r) => r.label === "Tunj Lain");
-    if (lainIdx >= 0) {
-      rows[lainIdx].nominal = (rows[lainIdx].nominal || 0) + lainSum;
-    }
-  }
-  return rows;
-};
-
-const mapPotonganRows = (items) => {
-  const list = normalizeList(items);
-  const usedIds = new Set();
-  const rows = POTONGAN_SLOTS.map((slot) => {
-    let found = null;
-    if (slot.match) {
-      found = list.find(
-        (i) => slot.match.test(i.nama || "") && !usedIds.has(i.id),
-      );
-    }
-    if (found) usedIds.add(found.id);
-    return {
-      label: slot.label,
-      nominal: found ? Number(found.nominal) || 0 : null,
-    };
-  });
-  const unmatched = list.filter((i) => !usedIds.has(i.id));
-  if (unmatched.length) {
-    const lainSum = unmatched.reduce((s, i) => s + (Number(i.nominal) || 0), 0);
-    const lainIdx = rows.findIndex((r) => r.label === "Pot. Lain-Lain");
-    if (lainIdx >= 0) {
-      rows[lainIdx].nominal = (rows[lainIdx].nominal || 0) + lainSum;
-    }
-  }
-  return rows;
-};
-
 const resolveGajiPokokPayroll = (payroll, gajiPokokPegawai) => {
   if (payroll?.gajiPokok != null && payroll.gajiPokok !== "") {
     return Number(payroll.gajiPokok) || 0;
@@ -164,21 +86,52 @@ const resolveGajiPokokPayroll = (payroll, gajiPokokPegawai) => {
   return Number(gajiPokokPegawai) || 0;
 };
 
+const mapPayrollTunjanganRows = (items) =>
+  normalizeList(items).map((item) => ({
+    id: item.id,
+    nama: item.nama || "-",
+    nominal: Number(item.nominal) || 0,
+  }));
+
+const mapPayrollPotonganRows = (items) =>
+  normalizeList(items).map((item) => ({
+    id: item.id,
+    nama: item.nama || "-",
+    nominal: Number(item.nominal) || 0,
+  }));
+
+const isTunjanganLembur = (nama) => /lembur/i.test(nama || "");
+
+const getPayrollTunjangans = (payroll) =>
+  normalizeList(
+    payroll?.payrollTunjangans ??
+      payroll?.payrollTunjangan ??
+      payroll?.PayrollTunjangans,
+  );
+
+const getPayrollPotongans = (payroll) =>
+  normalizeList(
+    payroll?.payrollPotongans ??
+      payroll?.payrollPotongan ??
+      payroll?.PayrollPotongans,
+  );
+
 const buildPayrollSlip = (payroll, gajiPokokPegawai, namaPegawai) => {
-  const tunjanganList = normalizeList(payroll.payrollTunjangans);
-  const lemburItem = tunjanganList.find((t) => isLembur(t.nama));
-  const tunjanganTetapRows = mapTunjanganTetapRows(tunjanganList);
+  const tunjanganRows = mapPayrollTunjanganRows(getPayrollTunjangans(payroll));
+  const potonganRows = mapPayrollPotonganRows(getPayrollPotongans(payroll));
+  const gajiTetapRows = tunjanganRows.filter((row) => !isTunjanganLembur(row.nama));
+  const gajiTidakTetapRows = tunjanganRows.filter((row) =>
+    isTunjanganLembur(row.nama),
+  );
   const gajiPokokNum = resolveGajiPokokPayroll(payroll, gajiPokokPegawai);
-  const subtotalTetap =
-    gajiPokokNum +
-    tunjanganTetapRows.reduce((s, r) => s + (Number(r.nominal) || 0), 0);
-  const lemburNominal = lemburItem ? Number(lemburItem.nominal) : null;
-  const totalGaji = subtotalTetap + (lemburNominal || 0);
-  const potonganRows = mapPotonganRows(payroll.payrollPotongans);
-  const totalPotongan = potonganRows.reduce(
-    (s, r) => s + (Number(r.nominal) || 0),
+  const totalGajiTetap =
+    gajiPokokNum + gajiTetapRows.reduce((sum, row) => sum + row.nominal, 0);
+  const totalGajiTidakTetap = gajiTidakTetapRows.reduce(
+    (sum, row) => sum + row.nominal,
     0,
   );
+  const totalGaji = totalGajiTetap + totalGajiTidakTetap;
+  const totalPotongan = potonganRows.reduce((sum, row) => sum + row.nominal, 0);
   const gajiDiterima = totalGaji - totalPotongan;
   const takeHomePay = Math.floor(gajiDiterima / 100) * 100;
 
@@ -186,9 +139,10 @@ const buildPayrollSlip = (payroll, gajiPokokPegawai, namaPegawai) => {
     nama: namaPegawai,
     periode: payroll.periode,
     gajiPokok: gajiPokokNum,
-    tunjanganTetapRows,
-    subtotalTetap,
-    lemburNominal,
+    gajiTetapRows,
+    gajiTidakTetapRows,
+    totalGajiTetap,
+    totalGajiTidakTetap,
     totalGaji,
     potonganRows,
     totalPotongan,
@@ -197,106 +151,155 @@ const buildPayrollSlip = (payroll, gajiPokokPegawai, namaPegawai) => {
   };
 };
 
-function SlipSection({ title }) {
+function SlipSectionRow({ title, colSpan }) {
   return (
-    <Box px={3} pt={2} pb={0}>
-      <Text fontWeight="bold" textDecoration="underline" fontSize="sm">
+    <Tr bg="gray.50">
+      <Td
+        colSpan={colSpan}
+        fontWeight="bold"
+        fontSize="sm"
+        textDecoration="underline"
+        py={2}
+      >
         {title}
-      </Text>
+      </Td>
+    </Tr>
+  );
+}
+
+function PayrollSlipTable({ slip, canMutasi, payrollId, onEditTunjangan }) {
+  const colSpan = canMutasi ? 4 : 3;
+
+  const renderTunjanganRow = (row) => (
+    <Tr key={row.id ?? row.nama}>
+      <Td pl={6}>{row.nama}</Td>
+      <Td isNumeric>{formatRupiah(row.nominal)}</Td>
+      <Td />
+      {canMutasi && (
+        <Td>
+          <IconButton
+            aria-label="Edit payroll tunjangan"
+            icon={<BsPencilFill />}
+            size="xs"
+            colorScheme="blue"
+            variant="outline"
+            onClick={() => onEditTunjangan(row, payrollId)}
+          />
+        </Td>
+      )}
+    </Tr>
+  );
+
+  const renderPotonganRow = (row) => (
+    <Tr key={row.id ?? row.nama}>
+      <Td pl={6}>{row.nama}</Td>
+      <Td isNumeric>{formatRupiah(row.nominal)}</Td>
+      <Td />
+      {canMutasi && <Td />}
+    </Tr>
+  );
+
+  return (
+    <Box overflowX="auto" borderRadius="md">
+      <Table variant="pegawai" size="sm">
+        <Thead>
+          <Tr>
+            <Th>Uraian</Th>
+            <Th isNumeric>Jumlah</Th>
+            <Th isNumeric>Total</Th>
+            {canMutasi && <Th w="70px">Aksi</Th>}
+          </Tr>
+        </Thead>
+        <Tbody>
+          <Tr>
+            <Td fontWeight="semibold">Nama</Td>
+            <Td colSpan={canMutasi ? 3 : 2}>{slip.nama || "-"}</Td>
+          </Tr>
+
+          <SlipSectionRow title="Gaji Tetap" colSpan={colSpan} />
+          <Tr>
+            <Td pl={6}>Gaji Pokok</Td>
+            <Td isNumeric>{formatRupiah(slip.gajiPokok)}</Td>
+            <Td />
+            {canMutasi && <Td />}
+          </Tr>
+          {slip.gajiTetapRows.map(renderTunjanganRow)}
+          <Tr fontWeight="bold" bg="gray.50">
+            <Td />
+            <Td />
+            <Td isNumeric>{formatRupiah(slip.totalGajiTetap)}</Td>
+            {canMutasi && <Td />}
+          </Tr>
+
+          <SlipSectionRow title="Gaji Tidak Tetap" colSpan={colSpan} />
+          {slip.gajiTidakTetapRows.length === 0 ? (
+            <Tr>
+              <Td pl={6} color="gray.500">
+                -
+              </Td>
+              <Td />
+              <Td />
+              {canMutasi && <Td />}
+            </Tr>
+          ) : (
+            slip.gajiTidakTetapRows.map(renderTunjanganRow)
+          )}
+          <Tr fontWeight="bold" bg="gray.50">
+            <Td />
+            <Td />
+            <Td isNumeric>{formatRupiah(slip.totalGajiTidakTetap)}</Td>
+            {canMutasi && <Td />}
+          </Tr>
+
+          <SlipSectionRow title="Potongan" colSpan={colSpan} />
+          {slip.potonganRows.length === 0 ? (
+            <Tr>
+              <Td pl={6} color="gray.500">
+                -
+              </Td>
+              <Td />
+              <Td />
+              {canMutasi && <Td />}
+            </Tr>
+          ) : (
+            slip.potonganRows.map(renderPotonganRow)
+          )}
+          <Tr fontWeight="bold" bg="gray.50">
+            <Td />
+            <Td />
+            <Td isNumeric>{formatRupiah(slip.totalPotongan)}</Td>
+            {canMutasi && <Td />}
+          </Tr>
+
+          <Tr fontWeight="bold" bg="blue.50">
+            <Td>Gaji yang Diterima</Td>
+            <Td isNumeric>{formatRupiah(slip.gajiDiterima)}</Td>
+            <Td isNumeric>{formatRupiah(slip.gajiDiterima)}</Td>
+            {canMutasi && <Td />}
+          </Tr>
+          <Tr fontWeight="bold" bg="green.50">
+            <Td>Take Home Pay</Td>
+            <Td isNumeric>{formatRupiah(slip.takeHomePay)}</Td>
+            <Td isNumeric>{formatRupiah(slip.takeHomePay)}</Td>
+            {canMutasi && <Td />}
+          </Tr>
+        </Tbody>
+      </Table>
     </Box>
   );
 }
 
-function SlipRow({ label, value, total, isBold, isNama }) {
-  const col2 = isNama ? value : formatAngka(value);
-  const col3 =
-    total != null && total !== "" ? (isNama ? "" : formatAngka(total)) : "";
-
-  return (
-    <Grid
-      templateColumns="1fr 130px 130px"
-      px={3}
-      py={isNama ? 2 : 1}
-      gap={2}
-      alignItems="center"
-      minH={isNama ? "36px" : "28px"}
-    >
-      <GridItem>
-        <Text fontWeight={isBold ? "bold" : "normal"} fontSize="sm">
-          {label}
-        </Text>
-      </GridItem>
-      <GridItem>
-        <Text
-          textAlign="right"
-          fontSize="sm"
-          fontWeight={isNama ? "semibold" : "normal"}
-        >
-          {col2}
-        </Text>
-      </GridItem>
-      <GridItem>
-        <Text
-          textAlign="right"
-          fontSize="sm"
-          fontWeight={isBold ? "bold" : "normal"}
-        >
-          {col3}
-        </Text>
-      </GridItem>
-    </Grid>
-  );
-}
-
-function PayrollSlip({ slip }) {
-  return (
-    <Box
-      border="2px solid"
-      borderColor="gray.800"
-      maxW="480px"
-      bg="white"
-      color="gray.900"
-      overflow="hidden"
-    >
-      <SlipRow label="Nama" value={slip.nama} isNama />
-      <Box h="2px" bg="gray.800" />
-
-      <SlipSection title="Gaji Tetap" />
-      <SlipRow label="Gaji Pokok" value={slip.gajiPokok} />
-      {slip.tunjanganTetapRows.map((row) => (
-        <SlipRow key={row.label} label={row.label} value={row.nominal} />
-      ))}
-      <SlipRow label="" value={null} total={slip.subtotalTetap} />
-
-      <SlipSection title="Gaji Tidak Tetap" />
-      <SlipRow label="Lembur" value={slip.lemburNominal} />
-      <SlipRow label="" value={null} total={slip.totalGaji} />
-
-      <Box h="2px" bg="gray.800" my={1} />
-
-      <SlipSection title="Potongan" />
-      {slip.potonganRows.map((row) => (
-        <SlipRow key={row.label} label={row.label} value={row.nominal} />
-      ))}
-      <SlipRow label="" value={null} total={slip.totalPotongan} />
-
-      <Box h="2px" bg="gray.800" my={1} />
-
-      <SlipRow
-        label="Gaji yang Diterima"
-        value={slip.gajiDiterima}
-        total={slip.gajiDiterima}
-        isBold
-      />
-      <SlipRow
-        label="Take Home Pay"
-        value={slip.takeHomePay}
-        total={slip.takeHomePay}
-        isBold
-      />
-    </Box>
-  );
-}
+const INFO_PEGAWAI_FIELDS = [
+  { key: "nama", label: "Nama" },
+  { key: "nip", label: "NIP" },
+  { key: "nik", label: "NIK" },
+  { key: "gajiPokok", label: "Gaji Pokok", format: formatRupiah },
+  { key: "jabatan", label: "Jabatan" },
+  { key: "pendidikan", label: "Pendidikan" },
+  { key: "statusPegawai", label: "Status Pegawai", nested: "status" },
+  { key: "profesi", label: "Profesi", nested: "nama" },
+  { key: "daftarUnitKerja", label: "Unit Kerja", nested: "unitKerja" },
+];
 
 const getPotonganIdFromItem = (item) =>
   item?.potonganId ??
@@ -465,7 +468,6 @@ function DetailPayroll(props) {
         }/payroll/get/detail-payroll/${pegawaiId}`,
       );
       const result = res?.data?.result;
-      console.log(result);
       if (!result) return;
       setDataPayrolls(normalizeList(result.payrolls));
       setDataPegawai({
@@ -733,84 +735,36 @@ function DetailPayroll(props) {
     return master?.nama || item?.nama || "-";
   };
 
+  const getInfoPegawaiValue = (field) => {
+    const raw = dataPegawai[field.key];
+    if (field.format) return field.format(raw);
+    if (field.nested) return raw?.[field.nested] || "-";
+    return raw || "-";
+  };
+
   return (
     <LayoutPegawai>
       {isLoadingData && <Loading />}
       <Box bgColor={"secondary"} py={"60px"} px={"30px"}>
         <Container maxW={"1280px"} variant={"primary"} pt={"30px"} ps={"0px"}>
           <Box p={"30px"}>
-            <Table>
-              <Thead>
-                <Tr>
-                  <Th minWidth={"100px"}>Nama:</Th>
-                  <Td>
-                    <Flex>
-                      <Text as="span">{dataPegawai.nama}</Text>
-                    </Flex>
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Th minWidth={"100px"}>NIP</Th>
-                  <Td>
-                    <Flex>
-                      <Text as="span">{dataPegawai.nip}</Text>
-                    </Flex>
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Th minWidth={"100px"}>NIK</Th>
-                  <Td>
-                    <Flex>
-                      <Text as="span">{dataPegawai.nik}</Text>
-                    </Flex>
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Th minWidth={"100px"}>Gaji Pokok</Th>
-                  <Td>
-                    <Flex>
-                      <Text as="span">
-                        {formatRupiah(dataPegawai.gajiPokok)}
-                      </Text>
-                    </Flex>
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Th minWidth={"100px"}>Jabatan</Th>
-                  <Td>
-                    <Flex>
-                      <Text as="span">{dataPegawai.jabatan}</Text>
-                    </Flex>
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Th minWidth={"100px"}>Pendidikan</Th>
-                  <Td>
-                    <Flex>
-                      <Text as="span">{dataPegawai.pendidikan}</Text>
-                    </Flex>
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Th>Status Pegawai</Th>
-                  <Td>
-                    <Text>{dataPegawai.statusPegawai?.status}</Text>
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Th>Profesi</Th>
-                  <Td>
-                    <Text>{dataPegawai.profesi?.nama}</Text>
-                  </Td>
-                </Tr>
-                <Tr>
-                  <Th>Unit Kerja</Th>
-                  <Td>
-                    <Text>{dataPegawai.daftarUnitKerja?.unitKerja || "-"}</Text>
-                  </Td>
-                </Tr>
-              </Thead>
-            </Table>
+            <Heading size="md" mb={4}>
+              Informasi Pegawai
+            </Heading>
+            <Box overflowX="auto" borderRadius="md">
+              <Table variant="pegawai" size="sm">
+                <Tbody>
+                  {INFO_PEGAWAI_FIELDS.map((field) => (
+                    <Tr key={field.key}>
+                      <Th w="200px" whiteSpace="nowrap">
+                        {field.label}
+                      </Th>
+                      <Td>{getInfoPegawaiValue(field)}</Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </Box>
             {canMutasi && (
               <Box mt={"30px"}>
                 <HStack spacing={"15px"}></HStack>
@@ -840,15 +794,19 @@ function DetailPayroll(props) {
                     dataPegawai.gajiPokok,
                     dataPegawai.nama,
                   );
-                  const payrollTunjanganItems = normalizeList(
-                    payroll.payrollTunjangans,
-                  );
                   return (
-                    <Box key={payroll.id}>
+                    <Box
+                      key={payroll.id}
+                      p={4}
+                      border="1px solid"
+                      borderColor="gray.200"
+                      borderRadius="md"
+                      bg="white"
+                    >
                       <Flex
                         justify="space-between"
                         align="center"
-                        mb={3}
+                        mb={4}
                         wrap="wrap"
                         gap={2}
                       >
@@ -862,58 +820,21 @@ function DetailPayroll(props) {
                           {payroll.createdAt
                             ? new Date(payroll.createdAt).toLocaleDateString(
                                 "id-ID",
+                                {
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                },
                               )
                             : ""}
                         </Text>
                       </Flex>
-                      <PayrollSlip slip={slip} />
-                      <Box mt={4}>
-                        <Flex justify="space-between" align="center" mb={2}>
-                          <Text fontWeight="semibold">Payroll Tunjangan</Text>
-                        </Flex>
-                        {payrollTunjanganItems.length === 0 ? (
-                          <Text fontSize="sm" color="gray.500">
-                            Tidak ada payroll tunjangan pada periode ini
-                          </Text>
-                        ) : (
-                          <Table variant="simple" size="sm">
-                            <Thead>
-                              <Tr>
-                                <Th>Nama</Th>
-                                <Th isNumeric>Nominal</Th>
-                                {canMutasi && <Th>Aksi</Th>}
-                              </Tr>
-                            </Thead>
-                            <Tbody>
-                              {payrollTunjanganItems.map((item, idx) => (
-                                <Tr key={item.id ?? idx}>
-                                  <Td>{item.nama || "-"}</Td>
-                                  <Td isNumeric>
-                                    {formatRupiah(item.nominal)}
-                                  </Td>
-                                  {canMutasi && (
-                                    <Td>
-                                      <IconButton
-                                        aria-label="Edit payroll tunjangan"
-                                        icon={<BsPencilFill />}
-                                        size="sm"
-                                        colorScheme="blue"
-                                        variant="outline"
-                                        onClick={() =>
-                                          openEditPayrollTunjangan(
-                                            item,
-                                            payroll.id,
-                                          )
-                                        }
-                                      />
-                                    </Td>
-                                  )}
-                                </Tr>
-                              ))}
-                            </Tbody>
-                          </Table>
-                        )}
-                      </Box>
+                      <PayrollSlipTable
+                        slip={slip}
+                        canMutasi={canMutasi}
+                        payrollId={payroll.id}
+                        onEditTunjangan={openEditPayrollTunjangan}
+                      />
                     </Box>
                   );
                 })}
@@ -951,7 +872,8 @@ function DetailPayroll(props) {
             {dataTunjanganPegawai.length === 0 ? (
               <DataKosong message="Belum ada tunjangan untuk pegawai ini" />
             ) : (
-              <Table variant={"pegawai"}>
+              <Box overflowX="auto" borderRadius="md">
+                <Table variant={"pegawai"} size="sm">
                 <Thead>
                   <Tr>
                     <Th>No</Th>
@@ -992,6 +914,7 @@ function DetailPayroll(props) {
                   ))}
                 </Tbody>
               </Table>
+              </Box>
             )}
           </Box>
         </Container>
@@ -1021,7 +944,8 @@ function DetailPayroll(props) {
             {dataPotonganPegawai.length === 0 ? (
               <DataKosong message="Belum ada potongan untuk pegawai ini" />
             ) : (
-              <Table variant={"pegawai"}>
+              <Box overflowX="auto" borderRadius="md">
+                <Table variant={"pegawai"} size="sm">
                 <Thead>
                   <Tr>
                     <Th>No</Th>
@@ -1037,43 +961,61 @@ function DetailPayroll(props) {
                   ))}
                 </Tbody>
               </Table>
+              </Box>
             )}
           </Box>
         </Container>
 
-        <Container
-          mt={"30px"}
-          maxW={"1280px"}
-          variant={"primary"}
-          pt={"30px"}
-          ps={"0px"}
-        >
-          <Table variant={"pegawai"}>
-            <Thead>
-              <Tr>
-                <Th>No</Th>
-                <Th>Nama</Th>
-                <Th>Unit Kerja</Th>
-                <Th>Status</Th>
-                <Th>Aksi</Th> <Th>Aksi</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {dataRiwayat?.map((item, index) => (
-                <Tr key={index}>
-                  <Td>{index + 1}</Td>
-                  <Td>{dataPegawai.nama}</Td>
-                  <Td>{item?.unitKerjaLama?.unitKerja}</Td>
-                  <Td>{item?.profesiLama?.nama}</Td>{" "}
-                  <Td>
-                    {item?.pangkat?.pangkat}/{item?.golongan?.golongan}
-                  </Td>
-                  <Td>{JSON.stringify(item?.golongan?.golongan)}</Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </Container>
+        {dataRiwayat?.length > 0 && (
+          <Container
+            mt={"30px"}
+            maxW={"1280px"}
+            variant={"primary"}
+            pt={"30px"}
+            ps={"0px"}
+          >
+            <Box p={"30px"}>
+              <Heading size="md" mb={4}>
+                Riwayat Pegawai
+              </Heading>
+              <Box overflowX="auto" borderRadius="md">
+                <Table variant="pegawai" size="sm">
+                  <Thead>
+                    <Tr>
+                      <Th>No</Th>
+                      <Th>Tanggal</Th>
+                      <Th>Unit Kerja Lama</Th>
+                      <Th>Profesi Lama</Th>
+                      <Th>Keterangan</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {dataRiwayat.map((item, index) => (
+                      <Tr key={item.id ?? index}>
+                        <Td>{index + 1}</Td>
+                        <Td>
+                          {item?.tanggal
+                            ? new Date(item.tanggal).toLocaleDateString(
+                                "id-ID",
+                                {
+                                  day: "numeric",
+                                  month: "long",
+                                  year: "numeric",
+                                },
+                              )
+                            : "-"}
+                        </Td>
+                        <Td>{item?.unitKerjaLama?.unitKerja || "-"}</Td>
+                        <Td>{item?.profesiLama?.nama || "-"}</Td>
+                        <Td>{item?.keterangan || "-"}</Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </Box>
+            </Box>
+          </Container>
+        )}
       </Box>
 
       <Modal

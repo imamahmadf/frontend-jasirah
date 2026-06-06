@@ -72,6 +72,63 @@ import {
   getSelect2FocusColor,
 } from "../../Style/Components/select2Styles";
 
+const parseSlipGajiError = async (err, fallback) => {
+  let errorMessage = err?.message || fallback;
+  const data = err?.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const text = await data.text();
+      const json = JSON.parse(text);
+      errorMessage = json.message || errorMessage;
+    } catch {
+      // tetap pakai pesan default
+    }
+  } else if (err?.response?.data?.message) {
+    errorMessage = err.response.data.message;
+  }
+  return errorMessage;
+};
+
+const downloadSlipGaji = async (pegawaiIds, tanggalAwal, tanggalAkhir, token) => {
+  const res = await axios.post(
+    `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/payroll/post/slip-gaji`,
+    {
+      pegawaiId: pegawaiIds,
+      tanggalAwal,
+      tanggalAkhir,
+    },
+    {
+      headers: { Authorization: `Bearer ${token}` },
+      responseType: "blob",
+    },
+  );
+
+  const contentType = res.headers["content-type"] || "";
+  if (contentType.includes("application/json")) {
+    const text = await res.data.text();
+    const json = JSON.parse(text);
+    throw new Error(json.message || "Gagal generate slip gaji");
+  }
+
+  const disposition = res.headers["content-disposition"] || "";
+  const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/i);
+  const filename = filenameMatch?.[1]?.trim() || "slip-gaji.docx";
+
+  const blob = new Blob([res.data], {
+    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+
+  return filename;
+};
+
 function DaftarPayroll() {
   const [dataPegawai, setDataPegawai] = useState([]);
   const history = useHistory();
@@ -269,14 +326,43 @@ function DaftarPayroll() {
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
-      toast({
-        title: "Berhasil",
-        description: `Payroll ${tanggalAwal} s/d ${tanggalAkhir} berhasil dibuat untuk ${selectedPegawaiIds.length} pegawai`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-        position: "top",
-      });
+
+      let slipDownloaded = false;
+      try {
+        await downloadSlipGaji(
+          selectedPegawaiIds,
+          tanggalAwal,
+          tanggalAkhir,
+          token,
+        );
+        slipDownloaded = true;
+      } catch (slipErr) {
+        console.error(slipErr);
+        const slipMessage = await parseSlipGajiError(
+          slipErr,
+          "Terjadi kesalahan saat generate slip gaji",
+        );
+        toast({
+          title: "Payroll berhasil, slip gaji gagal",
+          description: `Payroll ${tanggalAwal} s/d ${tanggalAkhir} sudah dibuat, namun slip gaji gagal diunduh: ${slipMessage}`,
+          status: "warning",
+          duration: 5000,
+          isClosable: true,
+          position: "top",
+        });
+      }
+
+      if (slipDownloaded) {
+        toast({
+          title: "Berhasil",
+          description: `Payroll ${tanggalAwal} s/d ${tanggalAkhir} berhasil dibuat dan slip gaji diunduh untuk ${selectedPegawaiIds.length} pegawai`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+          position: "top",
+        });
+      }
+
       resetTambahModal();
       onTambahClose();
       setIsLoadingData(true);
@@ -359,41 +445,12 @@ function DaftarPayroll() {
 
     setIsSubmittingSlip(true);
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/payroll/post/slip-gaji`,
-        {
-          pegawaiId: selectedPegawaiIds,
-          tanggalAwal: tanggalAwalSlip,
-          tanggalAkhir: tanggalAkhirSlip,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          responseType: "blob",
-        },
+      await downloadSlipGaji(
+        selectedPegawaiIds,
+        tanggalAwalSlip,
+        tanggalAkhirSlip,
+        token,
       );
-
-      const contentType = res.headers["content-type"] || "";
-      if (contentType.includes("application/json")) {
-        const text = await res.data.text();
-        const json = JSON.parse(text);
-        throw new Error(json.message || "Gagal generate slip gaji");
-      }
-
-      const disposition = res.headers["content-disposition"] || "";
-      const filenameMatch = disposition.match(/filename="?([^";\n]+)"?/i);
-      const filename = filenameMatch?.[1]?.trim() || "slip-gaji.docx";
-
-      const blob = new Blob([res.data], {
-        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
 
       toast({
         title: "Berhasil",
@@ -407,20 +464,10 @@ function DaftarPayroll() {
       onSlipGajiClose();
     } catch (err) {
       console.error(err);
-      let errorMessage =
-        err?.message || "Terjadi kesalahan saat generate slip gaji";
-      const data = err?.response?.data;
-      if (data instanceof Blob) {
-        try {
-          const text = await data.text();
-          const json = JSON.parse(text);
-          errorMessage = json.message || errorMessage;
-        } catch {
-          // tetap pakai pesan default
-        }
-      } else if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      }
+      const errorMessage = await parseSlipGajiError(
+        err,
+        "Terjadi kesalahan saat generate slip gaji",
+      );
       toast({
         title: "Gagal",
         description: errorMessage,
@@ -1575,7 +1622,8 @@ function DaftarPayroll() {
                   fontSize="sm"
                   color={colorMode === "dark" ? "gray.300" : "gray.600"}
                 >
-                  {selectedPegawaiIds.length} pegawai dipilih
+                  {selectedPegawaiIds.length} pegawai dipilih. Payroll akan
+                  dibuat dan slip gaji (.docx) akan diunduh otomatis.
                 </Text>
                 <FormControl isRequired>
                   <FormLabel

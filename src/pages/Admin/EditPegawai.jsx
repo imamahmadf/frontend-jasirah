@@ -137,7 +137,7 @@ function EditPegawai(props) {
       )
       .then((res) => {
         setDataPegawai({
-          id: res.data.result.id,
+          id: res.data.result?.id,
           nama: res.data.result.nama,
           jabatan: res.data.result.jabatan,
           nip: res.data.result.nip,
@@ -145,27 +145,27 @@ function EditPegawai(props) {
           gajiPokok: res.data.result.gajiPokok,
           pendidikan: res.data.result.pendidikan,
           profesi: {
-            id: res.data.result.profesi.id,
+            id: res.data.result.profesi?.id,
             nama: res.data.result.profesi.nama,
           },
           daftarGolongan: {
-            id: res.data.result.daftarGolongan.id,
-            golongan: res.data.result.daftarGolongan.golongan,
+            id: res.data.result.daftarGolongan?.id,
+            golongan: res.data.result.daftarGolongan?.golongan,
           },
           daftarPangkat: {
-            id: res.data.result.daftarPangkat.id,
-            pangkat: res.data.result.daftarPangkat.pangkat,
+            id: res.data.result.daftarPangkat?.id,
+            pangkat: res.data.result.daftarPangkat?.pangkat,
           },
           daftarTingkatan: {
-            id: res.data.result.daftarTingkatan.id,
-            tingkatan: res.data.result.daftarTingkatan.tingkatan,
+            id: res.data.result.daftarTingkatan?.id,
+            tingkatan: res.data.result.daftarTingkatan?.tingkatan,
           },
           statusPegawai: {
-            id: res.data.result.statusPegawai.id,
-            status: res.data.result.statusPegawai.status,
+            id: res.data.result.statusPegawai?.id,
+            status: res.data.result.statusPegawai?.status,
           },
           daftarUnitKerja: {
-            id: res.data.result.daftarUnitKerja.id,
+            id: res.data.result.daftarUnitKerja?.id,
             unitKerja: res.data.result.daftarUnitKerja.unitKerja,
           },
         });

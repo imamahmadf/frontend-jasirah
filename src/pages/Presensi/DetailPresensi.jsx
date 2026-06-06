@@ -144,6 +144,20 @@ function DetailPresensi() {
     return nama || kode || "-";
   };
 
+  const formatLemburHarianNominal = (value) => {
+    if (value == null || value === "") return "-";
+    const nominal = Number(value);
+    if (Number.isNaN(nominal) || nominal <= 0) return "-";
+    return nominal.toLocaleString("id-ID");
+  };
+
+  const formatLemburHarianInput = (value) => {
+    if (value == null || value === "") return "";
+    const nominal = Number(value);
+    if (Number.isNaN(nominal)) return "";
+    return String(nominal);
+  };
+
   const buildFormFromResult = (result = []) => {
     const initialForm = {};
     result.forEach((pegawai) => {
@@ -152,6 +166,7 @@ function DetailPresensi() {
         jamMasuk: formatJamInput(presensi?.jamMasuk),
         jamPulang: formatJamInput(presensi?.jamPulang),
         statusPresensiId: getStatusPresensiId(presensi),
+        lemburHarian: formatLemburHarianInput(presensi?.lemburHarian),
       };
     });
     return initialForm;
@@ -190,6 +205,7 @@ function DetailPresensi() {
         jamMasuk: formatJamInput(presensi?.jamMasuk),
         jamPulang: formatJamInput(presensi?.jamPulang),
         statusPresensiId: getStatusPresensiId(presensi),
+        lemburHarian: formatLemburHarianInput(presensi?.lemburHarian),
       },
     }));
     setEditingByPegawai((prev) => ({ ...prev, [pegawaiId]: false }));
@@ -200,17 +216,42 @@ function DetailPresensi() {
     if (!pegawaiId || !tanggal) return;
 
     const form = formByPegawai[pegawaiId] || {};
+    const presensi = pegawai?.presensis?.[0];
     const jamMasukDate = mergeTanggalDanJam(tanggal, form.jamMasuk);
     const jamPulangDate = mergeTanggalDanJam(tanggal, form.jamPulang);
     const statusPresensiId = form.statusPresensiId
       ? Number(form.statusPresensiId)
       : null;
+    const lemburHarian =
+      form.lemburHarian !== "" && form.lemburHarian != null
+        ? Math.round(Number(form.lemburHarian))
+        : null;
+    const unitKerjaId =
+      presensi?.unitKerjaId ?? presensi?.daftarUnitKerja?.id ?? null;
 
-    if (!jamMasukDate && !jamPulangDate && !statusPresensiId) {
+    if (
+      !jamMasukDate &&
+      !jamPulangDate &&
+      !statusPresensiId &&
+      lemburHarian == null
+    ) {
       toast({
         title: "Input belum lengkap",
         description:
-          "Isi minimal jam masuk, jam pulang, atau pilih status presensi.",
+          "Isi minimal jam masuk, jam pulang, status presensi, atau lembur harian.",
+        status: "warning",
+      });
+      return;
+    }
+
+    if (
+      form.lemburHarian !== "" &&
+      (Number.isNaN(Number(form.lemburHarian)) ||
+        Number(form.lemburHarian) < 0)
+    ) {
+      toast({
+        title: "Nominal lembur tidak valid",
+        description: "Masukkan nominal upah lembur yang valid.",
         status: "warning",
       });
       return;
@@ -226,7 +267,9 @@ function DetailPresensi() {
           tanggal,
           jamMasuk: jamMasukDate ? jamMasukDate.toISOString() : null,
           jamPulang: jamPulangDate ? jamPulangDate.toISOString() : null,
+          ...(unitKerjaId ? { unitKerjaId } : {}),
           ...(statusPresensiId ? { statusPresensiId } : {}),
+          ...(lemburHarian != null ? { lemburHarian } : {}),
         },
         {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -530,14 +573,17 @@ function DetailPresensi() {
                   <Th>Jam Masuk</Th>
                   <Th>Jam Pulang</Th> <Th>Jam Kerja</Th>
                   <Th>Status Presensi</Th>
-                  <Th>Keterangan</Th>
+                  <Th>Upah lembur</Th>
                   <Th>Aksi</Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {dataPegawai.length === 0 ? (
                   <Tr>
-                    <Td colSpan={isModeBuatPresensi ? 11 : 10} textAlign="center">
+                    <Td
+                      colSpan={isModeBuatPresensi ? 11 : 10}
+                      textAlign="center"
+                    >
                       Data presensi tidak ditemukan.
                     </Td>
                   </Tr>
@@ -655,7 +701,29 @@ function DetailPresensi() {
                             </Badge>
                           )}
                         </Td>
-                        <Td>{presensi?.keterangan || "-"}</Td>
+                        <Td>
+                          {isInputEnabled ? (
+                            <Input
+                              size="sm"
+                              type="number"
+                              min={0}
+                              step={1}
+                              placeholder="Nominal lembur"
+                              value={
+                                formByPegawai[pegawai?.id]?.lemburHarian ?? ""
+                              }
+                              onChange={(e) =>
+                                handleChangeJam(
+                                  pegawai?.id,
+                                  "lemburHarian",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          ) : (
+                            formatLemburHarianNominal(presensi?.lemburHarian)
+                          )}
+                        </Td>
                         <Td>
                           <HStack spacing={2}>
                             {isModeBuatPresensi ? (

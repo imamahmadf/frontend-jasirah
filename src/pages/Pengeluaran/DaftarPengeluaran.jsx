@@ -208,6 +208,75 @@ function DaftarPengeluaran() {
     return nama === "paid" || nama.includes("lunas");
   };
 
+  const BADGE_PALETTE = [
+    "green",
+    "blue",
+    "purple",
+    "orange",
+    "teal",
+    "cyan",
+    "pink",
+    "yellow",
+    "red",
+    "gray",
+  ];
+
+  const getBadgeColorById = (id, fallback = "gray") => {
+    if (id == null || id === "") return fallback;
+    const num = Number(id);
+    if (Number.isNaN(num)) return fallback;
+    return BADGE_PALETTE[(num - 1) % BADGE_PALETTE.length];
+  };
+
+  const normalizeBadgeLabel = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .trim();
+
+  const getStatusBadgeColor = (item) => {
+    const nama = normalizeBadgeLabel(
+      item?.statusPembayaran?.nama || item?.statusPembayaran?.status,
+    );
+    if (nama.includes("paid") || nama.includes("lunas")) return "green";
+    if (
+      nama.includes("payble") ||
+      nama.includes("payable") ||
+      nama.includes("hutang")
+    ) {
+      return "orange";
+    }
+    if (nama.includes("receivable") || nama.includes("piutang")) {
+      return "blue";
+    }
+    if (nama.includes("reimburse")) return "purple";
+    return getBadgeColorById(item?.statusPembayaranId, "gray");
+  };
+
+  const getMetodeBadgeColor = (item) => {
+    const nama = normalizeBadgeLabel(
+      item?.metodePembayaran?.nama || item?.metodePembayaran?.metode,
+    );
+    if (nama === "cash" || nama.includes("tunai")) return "orange";
+    if (nama.includes("transfer")) return "cyan";
+    return getBadgeColorById(item?.metodePembayaranId, "gray");
+  };
+
+  const getJenisBadgeColor = (item) => {
+    const jenisColorMap = {
+      1: "blue",
+      2: "purple",
+      3: "pink",
+      4: "orange",
+      5: "teal",
+      6: "cyan",
+      7: "yellow",
+      8: "red",
+    };
+    const id = item?.jenisPengeluaranId ?? item?.jenisPengeluaran?.id;
+    if (id != null && jenisColorMap[id]) return jenisColorMap[id];
+    return getBadgeColorById(id, "gray");
+  };
+
   const getSisaHariJatuhTempo = (jatuhTempo) => {
     if (!jatuhTempo) return null;
     const today = new Date();
@@ -576,6 +645,14 @@ function DaftarPengeluaran() {
       const rowStyle = getRowJatuhTempoStyle(item);
       const statusLabel =
         item?.statusPembayaran?.nama || item?.statusPembayaran?.status || "-";
+      const metodeLabel =
+        item?.metodePembayaran?.nama ||
+        item?.metodePembayaran?.metode ||
+        "-";
+      const jenisLabel =
+        item?.jenisPengeluaran?.nama ||
+        item?.jenisPengeluaran?.jenis ||
+        "-";
 
       return (
         <Box
@@ -598,21 +675,29 @@ function DaftarPengeluaran() {
                   {item?.deskripsi || "-"}
                 </Text>
               </Box>
-              <Badge colorScheme="green" variant="subtle" flexShrink={0}>
+              <Badge
+                colorScheme={getStatusBadgeColor(item)}
+                variant="subtle"
+                flexShrink={0}
+              >
                 {statusLabel}
               </Badge>
             </Flex>
 
             <HStack spacing={2} flexWrap="wrap" mb={3}>
-              <Badge colorScheme="purple" variant="subtle" fontSize="xs">
-                {item?.metodePembayaran?.nama ||
-                  item?.metodePembayaran?.metode ||
-                  "-"}
+              <Badge
+                colorScheme={getMetodeBadgeColor(item)}
+                variant="subtle"
+                fontSize="xs"
+              >
+                {metodeLabel}
               </Badge>
-              <Badge colorScheme="blue" variant="subtle" fontSize="xs">
-                {item?.jenisPengeluaran?.nama ||
-                  item?.jenisPengeluaran?.jenis ||
-                  "-"}
+              <Badge
+                colorScheme={getJenisBadgeColor(item)}
+                variant="subtle"
+                fontSize="xs"
+              >
+                {jenisLabel}
               </Badge>
             </HStack>
 
@@ -1362,21 +1447,30 @@ function DaftarPengeluaran() {
                             </Text>
                           </Td>
                           <Td>
-                            <Badge colorScheme="purple" variant="subtle">
+                            <Badge
+                              colorScheme={getMetodeBadgeColor(item)}
+                              variant="subtle"
+                            >
                               {item?.metodePembayaran?.nama ||
                                 item?.metodePembayaran?.metode ||
                                 "-"}
                             </Badge>
                           </Td>
                           <Td>
-                            <Badge colorScheme="blue" variant="subtle">
+                            <Badge
+                              colorScheme={getJenisBadgeColor(item)}
+                              variant="subtle"
+                            >
                               {item?.jenisPengeluaran?.nama ||
                                 item?.jenisPengeluaran?.jenis ||
                                 "-"}
                             </Badge>
                           </Td>
                           <Td>
-                            <Badge colorScheme="green" variant="subtle">
+                            <Badge
+                              colorScheme={getStatusBadgeColor(item)}
+                              variant="subtle"
+                            >
                               {item?.statusPembayaran?.nama ||
                                 item?.statusPembayaran?.status ||
                                 "-"}
