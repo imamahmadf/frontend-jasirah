@@ -88,8 +88,14 @@ function DaftarPengeluaran() {
     onOpen: onPreviewFotoOpen,
     onClose: onPreviewFotoClose,
   } = useDisclosure();
+  const {
+    isOpen: isHapusOpen,
+    onOpen: onHapusOpen,
+    onClose: onHapusClose,
+  } = useDisclosure();
   const [previewFotoUrl, setPreviewFotoUrl] = useState("");
   const [selectedPengeluaran, setSelectedPengeluaran] = useState(null);
+  const [pengeluaranToDelete, setPengeluaranToDelete] = useState(null);
   const formikRefTambah = useRef(null);
   const dataListRef = useRef(null);
 
@@ -531,6 +537,47 @@ function DaftarPengeluaran() {
     onTambahOpen();
   };
 
+  const openHapusModal = (item) => {
+    setPengeluaranToDelete(item);
+    onHapusOpen();
+  };
+
+  const handleCloseHapusModal = () => {
+    onHapusClose();
+    setPengeluaranToDelete(null);
+  };
+
+  const hapusPengeluaran = async () => {
+    if (!pengeluaranToDelete?.id) return;
+
+    try {
+      await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/pengeluaran/delete/${pengeluaranToDelete.id}`,
+      );
+
+      toast({
+        title: "Berhasil",
+        description: "Data pengeluaran berhasil dihapus.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      await fetchDataPengeluaran();
+      handleCloseHapusModal();
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Gagal",
+        description:
+          err.response?.data?.error || "Gagal menghapus data pengeluaran.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const pengeluaranId = params.get("pengeluaranId");
@@ -755,6 +802,15 @@ function DaftarPengeluaran() {
                 }
               >
                 Detail
+              </Button>
+              <Button
+                flex={1}
+                size="sm"
+                variant="outline"
+                colorScheme="red"
+                onClick={() => openHapusModal(item)}
+              >
+                Hapus
               </Button>
             </HStack>
           </Box>
@@ -1527,6 +1583,14 @@ function DaftarPengeluaran() {
                                 }
                               >
                                 Detail
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                colorScheme="red"
+                                onClick={() => openHapusModal(item)}
+                              >
+                                Hapus
                               </Button>
                             </HStack>
                           </Td>
@@ -2562,6 +2626,75 @@ function DaftarPengeluaran() {
               </Box>
             )}
           </Formik>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal Konfirmasi Hapus */}
+      <Modal
+        isOpen={isHapusOpen}
+        onClose={handleCloseHapusModal}
+        isCentered
+        size="md"
+      >
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(2px)" />
+        <ModalContent
+          mx={4}
+          bg={colorMode === "dark" ? "gray.800" : "white"}
+          borderRadius="10px"
+        >
+          <ModalHeader
+            color={colorMode === "dark" ? "white" : "gray.700"}
+            borderBottom="1px solid"
+            borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
+            pb={4}
+          >
+            Konfirmasi Hapus
+          </ModalHeader>
+          <ModalCloseButton
+            color={colorMode === "dark" ? "white" : "gray.700"}
+          />
+          <ModalBody py={6}>
+            <Text color={colorMode === "dark" ? "gray.300" : "gray.600"}>
+              Apakah Anda yakin ingin menghapus data pengeluaran berikut?
+              Tindakan ini tidak dapat dibatalkan.
+            </Text>
+            {pengeluaranToDelete && (
+              <Box
+                mt={4}
+                p={4}
+                borderRadius="8px"
+                bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+              >
+                <Text fontSize="sm" color="gray.500">
+                  Deskripsi
+                </Text>
+                <Text fontWeight="semibold" mb={2}>
+                  {pengeluaranToDelete.deskripsi || "-"}
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  Nominal
+                </Text>
+                <Text fontWeight="semibold" color="green.600">
+                  Rp{" "}
+                  {Number(pengeluaranToDelete.nominal || 0).toLocaleString(
+                    "id-ID",
+                  )}
+                </Text>
+              </Box>
+            )}
+          </ModalBody>
+          <ModalFooter
+            borderTop="1px solid"
+            borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
+            pt={4}
+          >
+            <Button variant="ghost" mr={3} onClick={handleCloseHapusModal}>
+              Batal
+            </Button>
+            <Button colorScheme="red" onClick={hapusPengeluaran}>
+              Ya, Hapus
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </>

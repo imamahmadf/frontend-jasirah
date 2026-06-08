@@ -143,6 +143,27 @@ function DetailLaporan(props) {
     onOpen: onFotoOpen,
     onClose: onFotoClose,
   } = useDisclosure();
+  const {
+    isOpen: isEditOpen,
+    onOpen: onEditOpen,
+    onClose: onEditClose,
+  } = useDisclosure();
+  const {
+    isOpen: isHapusOpen,
+    onOpen: onHapusOpen,
+    onClose: onHapusClose,
+  } = useDisclosure();
+  const [editingStokMasuk, setEditingStokMasuk] = useState(null);
+  const [stokMasukToDelete, setStokMasukToDelete] = useState(null);
+  const [editSpesifikasi, setEditSpesifikasi] = useState("");
+  const [editJumlah, setEditJumlah] = useState("");
+  const [editHargaSatuan, setEditHargaSatuan] = useState("");
+  const [editKeterangan, setEditKeterangan] = useState("");
+  const [editSumberDanaId, setEditSumberDanaId] = useState(null);
+  const [editSatuanPersediaanId, setEditSatuanPersediaanId] = useState(null);
+  const [editSelectedFile, setEditSelectedFile] = useState(null);
+  const [editPreviewUrl, setEditPreviewUrl] = useState(Foto);
+  const [editFotoExisting, setEditFotoExisting] = useState("");
   const handleSubmitChange = (field, val) => {
     console.log(field, val);
     if (field == "spek") {
@@ -175,6 +196,143 @@ function DetailLaporan(props) {
     }
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleEditFile = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size / 1024 > 2048) {
+      toast({
+        title: "Error!",
+        description: "Ukuran file maksimal 2MB",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+    setEditSelectedFile(file);
+    setEditPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const resetEditForm = () => {
+    setEditingStokMasuk(null);
+    setEditSpesifikasi("");
+    setEditJumlah("");
+    setEditHargaSatuan("");
+    setEditKeterangan("");
+    setEditSumberDanaId(null);
+    setEditSatuanPersediaanId(null);
+    setEditSelectedFile(null);
+    setEditPreviewUrl(Foto);
+    setEditFotoExisting("");
+  };
+
+  const handleCloseEditModal = () => {
+    onEditClose();
+    resetEditForm();
+  };
+
+  const openEditModal = (item) => {
+    setEditingStokMasuk(item);
+    setEditSpesifikasi(item?.spesifikasi || "");
+    setEditJumlah(item?.jumlah ?? "");
+    setEditHargaSatuan(item?.hargaSatuan ?? "");
+    setEditKeterangan(item?.keterangan || "");
+    setEditSumberDanaId(item?.sumberDanaId || item?.sumberDana?.id || null);
+    setEditSatuanPersediaanId(
+      item?.satuanPersediaanId || item?.satuanPersediaan?.id || null,
+    );
+    setEditFotoExisting(item?.foto || "");
+    setEditSelectedFile(null);
+    setEditPreviewUrl(item?.foto ? getFotoUrl(item.foto) : Foto);
+    onEditOpen();
+  };
+
+  const openHapusModal = (item) => {
+    setStokMasukToDelete(item);
+    onHapusOpen();
+  };
+
+  const handleCloseHapusModal = () => {
+    onHapusClose();
+    setStokMasukToDelete(null);
+  };
+
+  const editStokMasuk = () => {
+    if (!editingStokMasuk?.id) return;
+
+    const formData = new FormData();
+    formData.append("id", editingStokMasuk.id);
+    formData.append("spesifikasi", editSpesifikasi);
+    formData.append("jumlah", editJumlah);
+    formData.append("hargaSatuan", editHargaSatuan);
+    formData.append("keterangan", editKeterangan);
+    if (editSumberDanaId) formData.append("sumberDanaId", editSumberDanaId);
+    if (editSatuanPersediaanId)
+      formData.append("satuanPersediaanId", editSatuanPersediaanId);
+    if (editFotoExisting && !editSelectedFile)
+      formData.append("foto", editFotoExisting);
+    if (editSelectedFile) formData.append("pic", editSelectedFile);
+
+    axios
+      .post(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/laporan-persediaan/edit/stok-masuk`,
+        formData,
+      )
+      .then(() => {
+        toast({
+          title: "Berhasil!",
+          description: "Data stok masuk berhasil diubah.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        handleCloseEditModal();
+        fetchPersediaanMasuk();
+      })
+      .catch((err) => {
+        console.error(err.message);
+        toast({
+          title: "Error!",
+          description:
+            err.response?.data?.message || "Gagal mengubah data stok masuk.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      });
+  };
+
+  const hapusStokMasuk = () => {
+    if (!stokMasukToDelete?.id) return;
+
+    axios
+      .get(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/laporan-persediaan/delete/stok-masuk/${stokMasukToDelete.id}`,
+      )
+      .then(() => {
+        toast({
+          title: "Berhasil!",
+          description: "Data stok masuk berhasil dihapus.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        handleCloseHapusModal();
+        fetchPersediaanMasuk();
+      })
+      .catch((err) => {
+        console.error(err.message);
+        toast({
+          title: "Error!",
+          description:
+            err.response?.data?.message || "Gagal menghapus data stok masuk.",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      });
   };
 
   const resetForm = () => {
@@ -496,7 +654,7 @@ function DetailLaporan(props) {
                     <Td>{index + 1}</Td>{" "}
                     <Td>
                       {formatNomorSurat(
-                        item?.suratPesanan.nomor,
+                        item?.suratPesanan?.nomor,
                         item?.tanggal,
                         item?.nomorPesanan,
                       )}
@@ -583,6 +741,22 @@ function DetailLaporan(props) {
                             </Button>
                           </Link>
                         ) : null}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          colorScheme="blue"
+                          onClick={() => openEditModal(item)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          colorScheme="red"
+                          onClick={() => openHapusModal(item)}
+                        >
+                          Hapus
+                        </Button>
                       </Flex>
                     </Td>
                   </Tr>
@@ -984,6 +1158,243 @@ function DetailLaporan(props) {
                 />
               </Center>
             </ModalBody>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal Edit Stok Masuk */}
+        <Modal
+          closeOnOverlayClick={false}
+          isOpen={isEditOpen}
+          onClose={handleCloseEditModal}
+          isCentered
+          size="xl"
+        >
+          <ModalOverlay />
+          <ModalContent
+            bg={colorMode === "dark" ? "gray.800" : "white"}
+            borderRadius="10px"
+          >
+            <ModalHeader color={colorMode === "dark" ? "white" : "gray.700"}>
+              Edit Stok Masuk
+            </ModalHeader>
+            <ModalCloseButton
+              color={colorMode === "dark" ? "white" : "gray.700"}
+            />
+            <ModalBody>
+              {editingStokMasuk && (
+                <Box
+                  mb={4}
+                  p={3}
+                  borderRadius="8px"
+                  bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+                >
+                  <Text fontSize="sm" color="gray.500">
+                    Barang
+                  </Text>
+                  <Text fontWeight="semibold">
+                    {editingStokMasuk?.persediaan?.nama || "-"}
+                  </Text>
+                </Box>
+              )}
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                <FormControl>
+                  <FormLabel>Spesifikasi</FormLabel>
+                  <Input
+                    value={editSpesifikasi}
+                    onChange={(e) => setEditSpesifikasi(e.target.value)}
+                    bgColor="terang"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Jumlah</FormLabel>
+                  <Input
+                    type="number"
+                    value={editJumlah}
+                    onChange={(e) => setEditJumlah(e.target.value)}
+                    bgColor="terang"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Satuan</FormLabel>
+                  <Select2
+                    options={dataSatuan?.map((val) => ({
+                      value: val.id,
+                      label: val.satuan,
+                    }))}
+                    placeholder="Pilih satuan"
+                    value={
+                      editSatuanPersediaanId
+                        ? {
+                            value: editSatuanPersediaanId,
+                            label:
+                              dataSatuan?.find(
+                                (val) => val.id === editSatuanPersediaanId,
+                              )?.satuan ||
+                              editingStokMasuk?.satuanPersediaan?.satuan ||
+                              "",
+                          }
+                        : null
+                    }
+                    onChange={(selectedOption) => {
+                      setEditSatuanPersediaanId(selectedOption?.value || null);
+                    }}
+                    components={{
+                      DropdownIndicator: () => null,
+                      IndicatorSeparator: () => null,
+                    }}
+                    chakraStyles={{
+                      control: (provided) => ({
+                        ...provided,
+                        backgroundColor: "terang",
+                        border: "0px",
+                        minHeight: "40px",
+                      }),
+                    }}
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Harga Satuan</FormLabel>
+                  <Input
+                    type="number"
+                    value={editHargaSatuan}
+                    onChange={(e) => setEditHargaSatuan(e.target.value)}
+                    bgColor="terang"
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormLabel>Sumber Dana</FormLabel>
+                  <Select2
+                    options={dataSumberDana?.map((val) => ({
+                      value: val.id,
+                      label: val.sumber,
+                    }))}
+                    placeholder="Pilih sumber dana"
+                    value={
+                      editSumberDanaId
+                        ? {
+                            value: editSumberDanaId,
+                            label:
+                              dataSumberDana?.find(
+                                (val) => val.id === editSumberDanaId,
+                              )?.sumber ||
+                              editingStokMasuk?.sumberDana?.sumber ||
+                              "",
+                          }
+                        : null
+                    }
+                    onChange={(selectedOption) => {
+                      setEditSumberDanaId(selectedOption?.value || null);
+                    }}
+                    components={{
+                      DropdownIndicator: () => null,
+                      IndicatorSeparator: () => null,
+                    }}
+                    chakraStyles={{
+                      control: (provided) => ({
+                        ...provided,
+                        backgroundColor: "terang",
+                        border: "0px",
+                        minHeight: "40px",
+                      }),
+                    }}
+                  />
+                </FormControl>
+                <FormControl gridColumn={{ base: "span 1", md: "span 2" }}>
+                  <FormLabel>Keterangan</FormLabel>
+                  <Input
+                    value={editKeterangan}
+                    onChange={(e) => setEditKeterangan(e.target.value)}
+                    bgColor="terang"
+                  />
+                </FormControl>
+                <FormControl gridColumn={{ base: "span 1", md: "span 2" }}>
+                  <FormLabel>Foto Barang</FormLabel>
+                  <Center>
+                    <Image
+                      src={editPreviewUrl}
+                      alt="preview edit"
+                      boxSize="120px"
+                      objectFit="cover"
+                      borderRadius="md"
+                      mb={3}
+                    />
+                  </Center>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    bgColor="terang"
+                    onChange={handleEditFile}
+                  />
+                </FormControl>
+              </SimpleGrid>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={handleCloseEditModal}>
+                Batal
+              </Button>
+              <Button colorScheme="blue" onClick={editStokMasuk}>
+                Simpan Perubahan
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal Konfirmasi Hapus */}
+        <Modal
+          isOpen={isHapusOpen}
+          onClose={handleCloseHapusModal}
+          isCentered
+          size="md"
+        >
+          <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(2px)" />
+          <ModalContent
+            mx={4}
+            bg={colorMode === "dark" ? "gray.800" : "white"}
+            borderRadius="10px"
+          >
+            <ModalHeader
+              color={colorMode === "dark" ? "white" : "gray.700"}
+            >
+              Konfirmasi Hapus
+            </ModalHeader>
+            <ModalCloseButton
+              color={colorMode === "dark" ? "white" : "gray.700"}
+            />
+            <ModalBody>
+              <Text color={colorMode === "dark" ? "gray.300" : "gray.600"}>
+                Apakah Anda yakin ingin menghapus data stok masuk ini? Tindakan
+                ini tidak dapat dibatalkan.
+              </Text>
+              {stokMasukToDelete && (
+                <Box
+                  mt={4}
+                  p={4}
+                  borderRadius="8px"
+                  bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+                >
+                  <Text fontSize="sm" color="gray.500">
+                    Barang
+                  </Text>
+                  <Text fontWeight="semibold" mb={2}>
+                    {stokMasukToDelete?.persediaan?.nama || "-"}
+                  </Text>
+                  <Text fontSize="sm" color="gray.500">
+                    Spesifikasi
+                  </Text>
+                  <Text fontWeight="semibold">
+                    {stokMasukToDelete?.spesifikasi || "-"}
+                  </Text>
+                </Box>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={handleCloseHapusModal}>
+                Batal
+              </Button>
+              <Button colorScheme="red" onClick={hapusStokMasuk}>
+                Ya, Hapus
+              </Button>
+            </ModalFooter>
           </ModalContent>
         </Modal>
       </LayoutAset>

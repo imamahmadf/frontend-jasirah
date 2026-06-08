@@ -83,6 +83,23 @@ function LaporanPersediaanKeluar(props) {
     onOpen: onModalKeluarOpen,
     onClose: onModalKeluarClose,
   } = useDisclosure();
+  const {
+    isOpen: isEditOpen,
+    onOpen: onEditOpen,
+    onClose: onEditClose,
+  } = useDisclosure();
+  const {
+    isOpen: isHapusOpen,
+    onOpen: onHapusOpen,
+    onClose: onHapusClose,
+  } = useDisclosure();
+  const [editingKeluar, setEditingKeluar] = useState(null);
+  const [keluarToDelete, setKeluarToDelete] = useState(null);
+  const [editJumlahKeluar, setEditJumlahKeluar] = useState("");
+  const [editTanggal, setEditTanggal] = useState("");
+  const [editTujuan, setEditTujuan] = useState("");
+  const [editKeterangan, setEditKeterangan] = useState("");
+  const [editMaxKeluar, setEditMaxKeluar] = useState(0);
   const handleSubmitChange = (field, val) => {
     console.log(field, val);
     if (field == "spek") {
@@ -146,7 +163,177 @@ function LaporanPersediaanKeluar(props) {
     setMaxKeluar(sisaStok || 0);
     setJumlahKeluar(0);
     setTujuan("");
+    setTanggal("");
     onModalKeluarOpen();
+  };
+
+  const resetEditForm = () => {
+    setEditingKeluar(null);
+    setEditJumlahKeluar("");
+    setEditTanggal("");
+    setEditTujuan("");
+    setEditKeterangan("");
+    setEditMaxKeluar(0);
+  };
+
+  const handleCloseEditModal = () => {
+    onEditClose();
+    resetEditForm();
+  };
+
+  const openEditModal = (row, group) => {
+    if (!row?.stokKeluarId) return;
+
+    setEditingKeluar({
+      ...row,
+      namaPersediaan: group?.namaPersediaan,
+    });
+    setEditJumlahKeluar(row.jumlahKeluar ?? "");
+    setEditTanggal(
+      row.tanggal ? new Date(row.tanggal).toISOString().split("T")[0] : "",
+    );
+    setEditTujuan(row.tujuan || "");
+    setEditKeterangan(row.keterangan || "");
+    setEditMaxKeluar(
+      (Number(group?.sisa) || 0) + (Number(row.jumlahKeluar) || 0),
+    );
+    onEditOpen();
+  };
+
+  const openHapusModal = (row, group) => {
+    if (!row?.stokKeluarId) return;
+
+    setKeluarToDelete({
+      ...row,
+      namaPersediaan: group?.namaPersediaan,
+    });
+    onHapusOpen();
+  };
+
+  const handleCloseHapusModal = () => {
+    onHapusClose();
+    setKeluarToDelete(null);
+  };
+
+  const editStokKeluar = () => {
+    if (!editingKeluar?.stokKeluarId) return;
+
+    if (!editJumlahKeluar || !editTujuan || !editTanggal) {
+      toast({
+        title: "Error!",
+        description: "Mohon isi jumlah, tanggal, dan tujuan",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (parseInt(editJumlahKeluar, 10) > editMaxKeluar) {
+      toast({
+        title: "Error!",
+        description: `Jumlah melebihi sisa stok (${editMaxKeluar})`,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    axios
+      .post(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/persediaan/edit/keluar`,
+        {
+          id: editingKeluar.stokKeluarId,
+          jumlah: parseInt(editJumlahKeluar, 10),
+          tujuan: editTujuan,
+          tanggal: editTanggal,
+          keterangan: editKeterangan,
+        },
+      )
+      .then(() => {
+        toast({
+          title: "Berhasil!",
+          description: "Data persediaan keluar berhasil diubah.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        handleCloseEditModal();
+        fetchPersediaanKeluar();
+      })
+      .catch((err) => {
+        console.error(err.message);
+        toast({
+          title: "Error!",
+          description:
+            err.response?.data?.message ||
+            "Gagal mengubah data persediaan keluar",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      });
+  };
+
+  const hapusStokKeluar = () => {
+    if (!keluarToDelete?.stokKeluarId) return;
+
+    axios
+      .get(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/persediaan/delete/keluar/${keluarToDelete.stokKeluarId}`,
+      )
+      .then(() => {
+        toast({
+          title: "Berhasil!",
+          description: "Data persediaan keluar berhasil dihapus.",
+          status: "success",
+          duration: 5000,
+          isClosable: true,
+        });
+        handleCloseHapusModal();
+        fetchPersediaanKeluar();
+      })
+      .catch((err) => {
+        console.error(err.message);
+        toast({
+          title: "Error!",
+          description:
+            err.response?.data?.message ||
+            "Gagal menghapus data persediaan keluar",
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      });
+  };
+
+  const showAksiKeluar =
+    DataPersediaan?.periode?.statusLaporan === "buka";
+
+  const renderRowActions = (row, group) => {
+    if (!showAksiKeluar || !row?.stokKeluarId) return null;
+
+    return (
+      <HStack spacing={1} mt={1} flexWrap="wrap">
+        <Button
+          size="xs"
+          variant="outline"
+          colorScheme="blue"
+          onClick={() => openEditModal(row, group)}
+        >
+          Edit
+        </Button>
+        <Button
+          size="xs"
+          variant="outline"
+          colorScheme="red"
+          onClick={() => openHapusModal(row, group)}
+        >
+          Hapus
+        </Button>
+      </HStack>
+    );
   };
 
   const submitPersediaanKeluar = () => {
@@ -394,11 +581,13 @@ function LaporanPersediaanKeluar(props) {
           stokKeluarList.length > 0
             ? stokKeluarList.map((keluar) => ({
                 key: `${item?.persediaanId}-${keluar?.id}`,
+                stokKeluarId: keluar?.id ?? null,
                 jumlahKeluar: keluar?.jumlah ?? 0,
                 hargaSatuan: keluar?.hargaSatuan ?? 0,
                 tanggal: keluar?.tanggal || null,
                 tujuan: keluar?.tujuan || null,
-                stokMasukId: keluar?.stokMasukId ?? null,
+                keterangan: keluar?.keterangan || null,
+                stokMasukId: item?.stokMasukId ?? null,
               }))
             : [
                 {
@@ -640,6 +829,7 @@ function LaporanPersediaanKeluar(props) {
                     value={row.jumlahKeluar}
                     valueColor="red.500"
                   />
+                  {renderRowActions(row, group)}
                 </Box>
               ))
             )}
@@ -794,22 +984,6 @@ function LaporanPersediaanKeluar(props) {
                         {group.stokAwal}
                       </Td>
                     );
-                    const aksiCell = (
-                      <Td rowSpan={rowCount}>
-                        {DataPersediaan?.periode?.statusLaporan === "buka" ? (
-                          <Button
-                            onClick={() =>
-                              handleTambahKeluar(group.stokMasukId, group.sisa)
-                            }
-                            size="sm"
-                            colorScheme="blue"
-                          >
-                            Tambah
-                          </Button>
-                        ) : null}
-                      </Td>
-                    );
-
                     return group.rows.map((row, idx) => (
                       <Tr key={row.key} bg={idx === 0 ? groupBg : undefined}>
                         {idx === 0 && noCell}
@@ -833,24 +1007,25 @@ function LaporanPersediaanKeluar(props) {
                         </Td>
 
                         {idx === 0 && sisaCell}
-                        {group.isStokMasukIdUniform ? (
-                          idx === 0 && aksiCell
-                        ) : (
-                          <Td>
-                            <Button
-                              onClick={() =>
-                                handleTambahKeluar(
-                                  group.stokMasukId,
-                                  group.sisa
-                                )
-                              }
-                              size="sm"
-                              colorScheme="blue"
-                            >
-                              Tambah
-                            </Button>
-                          </Td>
-                        )}
+                        <Td>
+                          <Flex direction="column" gap={1} align="flex-start">
+                            {idx === 0 && showAksiKeluar && (
+                              <Button
+                                onClick={() =>
+                                  handleTambahKeluar(
+                                    group.stokMasukId,
+                                    group.sisa,
+                                  )
+                                }
+                                size="sm"
+                                colorScheme="blue"
+                              >
+                                Tambah
+                              </Button>
+                            )}
+                            {renderRowActions(row, group)}
+                          </Flex>
+                        </Td>
                       </Tr>
                     ));
                   })
@@ -947,6 +1122,168 @@ function LaporanPersediaanKeluar(props) {
               </Button>
               <Button onClick={onModalKeluarClose} variant="ghost">
                 Batal
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal Edit Persediaan Keluar */}
+        <Modal
+          closeOnOverlayClick={false}
+          isOpen={isEditOpen}
+          onClose={handleCloseEditModal}
+          isCentered
+        >
+          <ModalOverlay />
+          <ModalContent
+            borderRadius="10px"
+            maxWidth={{ base: "95vw", md: "600px" }}
+            mx={{ base: 2, md: 0 }}
+            bg={colorMode === "dark" ? "gray.800" : "white"}
+          >
+            <ModalHeader color={colorMode === "dark" ? "white" : "gray.700"}>
+              Edit Persediaan Keluar
+            </ModalHeader>
+            <ModalCloseButton
+              color={colorMode === "dark" ? "white" : "gray.700"}
+            />
+            <ModalBody>
+              {editingKeluar && (
+                <Box
+                  mb={4}
+                  p={3}
+                  borderRadius="md"
+                  bg={colorMode === "dark" ? "gray.700" : "blue.50"}
+                >
+                  <Text fontSize="sm" color="gray.600">
+                    Barang
+                  </Text>
+                  <Text fontWeight="bold">
+                    {editingKeluar.namaPersediaan || "-"}
+                  </Text>
+                  <Text fontSize="sm" color="gray.600" mt={2}>
+                    Maks. jumlah keluar
+                  </Text>
+                  <Text fontSize="xl" fontWeight="bold" color="green.600">
+                    {editMaxKeluar}
+                  </Text>
+                </Box>
+              )}
+              <FormControl my="16px">
+                <FormLabel>Jumlah Keluar</FormLabel>
+                <Input
+                  height="50px"
+                  bgColor="terang"
+                  type="number"
+                  min={1}
+                  max={editMaxKeluar}
+                  value={editJumlahKeluar}
+                  onChange={(e) => setEditJumlahKeluar(e.target.value)}
+                  placeholder={`Maks. ${editMaxKeluar}`}
+                />
+              </FormControl>
+              <FormControl my="16px">
+                <FormLabel>Tanggal</FormLabel>
+                <Input
+                  type="date"
+                  height="50px"
+                  bgColor="terang"
+                  value={editTanggal}
+                  onChange={(e) => setEditTanggal(e.target.value)}
+                  min={DataPersediaan?.periode?.tanggalAwal?.split("T")[0]}
+                  max={DataPersediaan?.periode?.tanggalAkhir?.split("T")[0]}
+                />
+              </FormControl>
+              <FormControl my="16px">
+                <FormLabel>Tujuan</FormLabel>
+                <Textarea
+                  height="80px"
+                  bgColor="terang"
+                  value={editTujuan}
+                  onChange={(e) => setEditTujuan(e.target.value)}
+                  placeholder="Masukkan tujuan pengeluaran barang"
+                />
+              </FormControl>
+              <FormControl my="16px">
+                <FormLabel>Keterangan</FormLabel>
+                <Input
+                  height="50px"
+                  bgColor="terang"
+                  value={editKeterangan}
+                  onChange={(e) => setEditKeterangan(e.target.value)}
+                  placeholder="Keterangan (opsional)"
+                />
+              </FormControl>
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={handleCloseEditModal}>
+                Batal
+              </Button>
+              <Button colorScheme="blue" onClick={editStokKeluar}>
+                Simpan Perubahan
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal Konfirmasi Hapus */}
+        <Modal
+          isOpen={isHapusOpen}
+          onClose={handleCloseHapusModal}
+          isCentered
+          size="md"
+        >
+          <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(2px)" />
+          <ModalContent
+            mx={4}
+            bg={colorMode === "dark" ? "gray.800" : "white"}
+            borderRadius="10px"
+          >
+            <ModalHeader color={colorMode === "dark" ? "white" : "gray.700"}>
+              Konfirmasi Hapus
+            </ModalHeader>
+            <ModalCloseButton
+              color={colorMode === "dark" ? "white" : "gray.700"}
+            />
+            <ModalBody>
+              <Text color={colorMode === "dark" ? "gray.300" : "gray.600"}>
+                Apakah Anda yakin ingin menghapus data persediaan keluar ini?
+                Tindakan ini tidak dapat dibatalkan.
+              </Text>
+              {keluarToDelete && (
+                <Box
+                  mt={4}
+                  p={4}
+                  borderRadius="8px"
+                  bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+                >
+                  <Text fontSize="sm" color="gray.500">
+                    Barang
+                  </Text>
+                  <Text fontWeight="semibold" mb={2}>
+                    {keluarToDelete.namaPersediaan || "-"}
+                  </Text>
+                  <Text fontSize="sm" color="gray.500">
+                    Tujuan
+                  </Text>
+                  <Text fontWeight="semibold" mb={2}>
+                    {keluarToDelete.tujuan || "-"}
+                  </Text>
+                  <Text fontSize="sm" color="gray.500">
+                    Jumlah Keluar
+                  </Text>
+                  <Text fontWeight="semibold" color="red.500">
+                    {keluarToDelete.jumlahKeluar}
+                  </Text>
+                </Box>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" mr={3} onClick={handleCloseHapusModal}>
+                Batal
+              </Button>
+              <Button colorScheme="red" onClick={hapusStokKeluar}>
+                Ya, Hapus
               </Button>
             </ModalFooter>
           </ModalContent>

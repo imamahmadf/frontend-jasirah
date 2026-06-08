@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import LayoutAset from "../../Componets/Aset/LayoutAset";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Box,
   HStack,
@@ -30,8 +30,11 @@ function DetailTrackingPersediaan(props) {
   const [loading, setLoading] = useState(true);
   const { colorMode } = useColorMode();
   const user = useSelector(userRedux);
+  const location = useLocation();
   const persediaanId = props.match.params.id;
-  const unitKerjaId = user[0]?.unitKerja_profile?.id;
+  const queryUnitKerjaId = new URLSearchParams(location.search).get("unitKerjaId");
+  const unitKerjaId =
+    queryUnitKerjaId || user[0]?.unitKerja_profile?.id;
 
   useEffect(() => {
     if (!unitKerjaId || !persediaanId) return;
