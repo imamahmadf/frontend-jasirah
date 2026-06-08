@@ -44,6 +44,7 @@ import {
   Card,
   CardBody,
   CardHeader,
+  useToast,
 } from "@chakra-ui/react";
 import { BsCaretRightFill } from "react-icons/bs";
 import { BsCaretLeftFill } from "react-icons/bs";
@@ -108,6 +109,14 @@ function DaftarPegawai() {
     onOpen: onTambahOpen,
     onClose: onTambahClose,
   } = useDisclosure();
+  const {
+    isOpen: isHapusOpen,
+    onOpen: onHapusOpen,
+    onClose: onHapusClose,
+  } = useDisclosure();
+  const [pegawaiToDelete, setPegawaiToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -278,6 +287,56 @@ function DaftarPegawai() {
       setPendidikan(val);
     } else if (field == "nik") {
       setNik(val);
+    }
+  };
+
+  const openHapusModal = (item) => {
+    setPegawaiToDelete(item);
+    onHapusOpen();
+  };
+
+  const handleCloseHapusModal = () => {
+    onHapusClose();
+    setPegawaiToDelete(null);
+  };
+
+  const hapusPegawai = async () => {
+    if (!pegawaiToDelete?.id) return;
+
+    setIsDeleting(true);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/pegawai/hapus/${pegawaiToDelete.id}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      toast({
+        title: "Berhasil",
+        description: "Data pegawai berhasil dihapus.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+
+      await fetchDataPegawai();
+      handleCloseHapusModal();
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Gagal",
+        description:
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          "Gagal menghapus data pegawai.",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -540,6 +599,7 @@ function DaftarPegawai() {
             </Tooltip>
             <Tooltip label="Hapus" hasArrow>
               <Button
+                onClick={() => openHapusModal(item)}
                 variant={"cancle"}
                 size="sm"
                 leftIcon={<BsTrashFill />}
@@ -1442,6 +1502,7 @@ function DaftarPegawai() {
                             </Tooltip>
                             <Tooltip label="Hapus" hasArrow>
                               <Button
+                                onClick={() => openHapusModal(item)}
                                 variant={"cancle"}
                                 size="sm"
                                 leftIcon={<BsTrashFill />}
@@ -1884,6 +1945,82 @@ function DaftarPegawai() {
               loadingText="Menyimpan..."
             >
               Simpan Pegawai
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={isHapusOpen}
+        onClose={handleCloseHapusModal}
+        isCentered
+        size="md"
+      >
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(2px)" />
+        <ModalContent
+          mx={4}
+          bg={colorMode === "dark" ? "gray.800" : "white"}
+          borderRadius="10px"
+        >
+          <ModalHeader
+            color={colorMode === "dark" ? "white" : "gray.700"}
+            borderBottom="1px solid"
+            borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
+            pb={4}
+          >
+            Konfirmasi Hapus Pegawai
+          </ModalHeader>
+          <ModalCloseButton
+            color={colorMode === "dark" ? "white" : "gray.700"}
+          />
+          <ModalBody py={6}>
+            <Text color={colorMode === "dark" ? "gray.300" : "gray.600"}>
+              Apakah Anda yakin ingin menghapus pegawai berikut? Tindakan ini
+              tidak dapat dibatalkan.
+            </Text>
+            {pegawaiToDelete && (
+              <Box
+                mt={4}
+                p={4}
+                borderRadius="8px"
+                bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+              >
+                <Text fontSize="sm" color="gray.500">
+                  Nama
+                </Text>
+                <Text fontWeight="semibold" mb={2}>
+                  {pegawaiToDelete.nama || "-"}
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  NIP
+                </Text>
+                <Text fontWeight="semibold" mb={2}>
+                  {pegawaiToDelete.nip || "-"}
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  Unit Kerja
+                </Text>
+                <Text fontWeight="semibold">
+                  {pegawaiToDelete?.daftarUnitKerja?.unitKerja || "-"}
+                </Text>
+              </Box>
+            )}
+          </ModalBody>
+          <ModalFooter
+            borderTop="1px solid"
+            borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
+            pt={4}
+          >
+            <Button variant="ghost" mr={3} onClick={handleCloseHapusModal}>
+              Batal
+            </Button>
+            <Button
+              colorScheme="red"
+              onClick={hapusPegawai}
+              isLoading={isDeleting}
+              loadingText="Menghapus..."
+            >
+              Ya, Hapus
             </Button>
           </ModalFooter>
         </ModalContent>

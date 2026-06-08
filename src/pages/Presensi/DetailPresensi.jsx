@@ -210,6 +210,58 @@ function DetailPresensi() {
     }));
   };
 
+  const pegawaiYangBisaDipilih = useMemo(
+    () => dataPegawai.filter((p) => bisaDipilihBuatPresensi(p)),
+    [dataPegawai],
+  );
+
+  const isSemuaTerpilih =
+    pegawaiYangBisaDipilih.length > 0 &&
+    pegawaiYangBisaDipilih.every((p) => selectedPegawaiIds[p.id]);
+
+  const isSebagianTerpilih =
+    pegawaiYangBisaDipilih.some((p) => selectedPegawaiIds[p.id]) &&
+    !isSemuaTerpilih;
+
+  const handleTogglePilihSemua = (checked) => {
+    if (checked) {
+      const next = {};
+      pegawaiYangBisaDipilih.forEach((p) => {
+        next[p.id] = true;
+      });
+      setSelectedPegawaiIds(next);
+    } else {
+      setSelectedPegawaiIds({});
+    }
+  };
+
+  const handleKlikBarisPegawai = (pegawai) => {
+    if (!isModeBuatPresensi || !bisaDipilihBuatPresensi(pegawai)) return;
+    handleTogglePilihPegawai(pegawai, !selectedPegawaiIds[pegawai.id]);
+  };
+
+  const getBarisPilihStyle = (bisaDipilih, isSelected) => {
+    if (!isModeBuatPresensi || !bisaDipilih) return {};
+    return {
+      cursor: "pointer",
+      bg: isSelected
+        ? colorMode === "dark"
+          ? "teal.900"
+          : "teal.50"
+        : undefined,
+      _hover: {
+        bg: isSelected
+          ? colorMode === "dark"
+            ? "teal.800"
+            : "teal.100"
+          : colorMode === "dark"
+            ? "gray.700"
+            : "gray.50",
+      },
+      transition: "background 0.15s",
+    };
+  };
+
   const handleBatalEdit = (pegawai) => {
     const pegawaiId = pegawai?.id;
     if (!pegawaiId) return;
@@ -262,8 +314,7 @@ function DetailPresensi() {
 
     if (
       form.lemburHarian !== "" &&
-      (Number.isNaN(Number(form.lemburHarian)) ||
-        Number(form.lemburHarian) < 0)
+      (Number.isNaN(Number(form.lemburHarian)) || Number(form.lemburHarian) < 0)
     ) {
       toast({
         title: "Nominal lembur tidak valid",
@@ -638,16 +689,10 @@ function DetailPresensi() {
       status: isInputEnabled ? (
         <Select
           size="sm"
-          placeholder={
-            loadingStatusPresensi ? "Memuat..." : "Pilih status"
-          }
+          placeholder={loadingStatusPresensi ? "Memuat..." : "Pilih status"}
           value={formStatusId}
           onChange={(e) =>
-            handleChangeJam(
-              pegawai?.id,
-              "statusPresensiId",
-              e.target.value,
-            )
+            handleChangeJam(pegawai?.id, "statusPresensiId", e.target.value)
           }
           isDisabled={loadingStatusPresensi}
         >
@@ -729,15 +774,13 @@ function DetailPresensi() {
         mb={4}
         bg={cardBg}
         border="1px solid"
-        borderColor={cardBorder}
+        borderColor={isModeBuatPresensi && isSelected ? "teal.400" : cardBorder}
         borderRadius="12px"
         boxShadow="sm"
+        onClick={() => handleKlikBarisPegawai(pegawai)}
+        {...getBarisPilihStyle(bisaDipilih, isSelected)}
       >
-        <CardHeader
-          pb={3}
-          borderBottom="1px solid"
-          borderColor={cardBorder}
-        >
+        <CardHeader pb={3} borderBottom="1px solid" borderColor={cardBorder}>
           <Flex justify="space-between" align="flex-start" gap={3}>
             <VStack align="start" spacing={1} flex={1} minW={0}>
               <HStack spacing={2} w="100%">
@@ -749,9 +792,7 @@ function DetailPresensi() {
                   ) : (
                     <Checkbox
                       isChecked={isSelected}
-                      onChange={(e) =>
-                        handleTogglePilihPegawai(pegawai, e.target.checked)
-                      }
+                      pointerEvents="none"
                       flexShrink={0}
                     />
                   )
@@ -878,6 +919,29 @@ function DetailPresensi() {
             </Center>
           ) : isMobile ? (
             <Box>
+              {isModeBuatPresensi && pegawaiYangBisaDipilih.length > 0 ? (
+                <HStack
+                  mb={3}
+                  p={3}
+                  bg={cardBg}
+                  border="1px solid"
+                  borderColor={cardBorder}
+                  borderRadius="md"
+                  cursor="pointer"
+                  onClick={() => handleTogglePilihSemua(!isSemuaTerpilih)}
+                  _hover={{
+                    bg: colorMode === "dark" ? "gray.700" : "gray.50",
+                  }}
+                >
+                  <Checkbox
+                    isChecked={isSemuaTerpilih}
+                    isIndeterminate={isSebagianTerpilih}
+                    pointerEvents="none"
+                  >
+                    Pilih semua ({pegawaiYangBisaDipilih.length})
+                  </Checkbox>
+                </HStack>
+              ) : null}
               {dataPegawai.map((pegawai, index) => (
                 <PegawaiPresensiCard
                   key={pegawai?.id || `pegawai-${index}`}
@@ -888,76 +952,83 @@ function DetailPresensi() {
             </Box>
           ) : (
             <Box overflowX="auto" mx={{ base: -2, md: 0 }}>
-            <Table size="sm" variant="simple" minW="960px">
-              <Thead>
-                <Tr>
-                  <Th>No</Th>
-                  {isModeBuatPresensi ? <Th>Pilih</Th> : null}
-                  <Th>Nama Pegawai</Th>
-                  <Th>NIP</Th>
-                  <Th>Unit Kerja</Th>
-                  <Th>Jam Masuk</Th>
-                  <Th>Jam Pulang</Th>
-                  <Th>Jam Kerja</Th>
-                  <Th>Status Presensi</Th>
-                  <Th>Upah lembur</Th>
-                  <Th>Aksi</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {dataPegawai.map((pegawai, index) => {
-                  const ctx = getPegawaiCtx(pegawai, index);
-                  const {
-                    presensi,
-                    isSelected,
-                    bisaDipilih,
-                    fields,
-                  } = ctx;
+              <Table size="sm" variant="simple" minW="960px">
+                <Thead>
+                  <Tr>
+                    <Th>No</Th>
+                    {isModeBuatPresensi ? (
+                      <Th
+                        cursor="pointer"
+                        onClick={() => handleTogglePilihSemua(!isSemuaTerpilih)}
+                        _hover={{
+                          bg: colorMode === "dark" ? "gray.700" : "gray.50",
+                        }}
+                      >
+                        <Checkbox
+                          isChecked={isSemuaTerpilih}
+                          isIndeterminate={isSebagianTerpilih}
+                          pointerEvents="none"
+                          aria-label="Pilih semua pegawai"
+                        />
+                      </Th>
+                    ) : null}
+                    <Th>Nama Pegawai</Th>
+                    <Th>Jabatan</Th>
+                    <Th>Unit Kerja</Th>
+                    <Th>Jam Masuk</Th>
+                    <Th>Jam Pulang</Th>
+                    <Th>Jam Kerja</Th>
+                    <Th>Status Presensi</Th>
+                    <Th>Upah lembur</Th>
+                    <Th>Aksi</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {dataPegawai.map((pegawai, index) => {
+                    const ctx = getPegawaiCtx(pegawai, index);
+                    const { presensi, isSelected, bisaDipilih, fields } = ctx;
 
-                  return (
-                    <Tr key={pegawai?.id || `pegawai-${index}`}>
-                      <Td>{index + 1}</Td>
-                      {isModeBuatPresensi ? (
-                        <Td>
-                          {!bisaDipilih ? (
-                            <Text fontSize="xs" color="gray.500">
-                              Jam lengkap
-                            </Text>
-                          ) : (
-                            <Checkbox
-                              isChecked={isSelected}
-                              onChange={(e) =>
-                                handleTogglePilihPegawai(
-                                  pegawai,
-                                  e.target.checked,
-                                )
-                              }
-                            />
-                          )}
+                    return (
+                      <Tr
+                        key={pegawai?.id || `pegawai-${index}`}
+                        onClick={() => handleKlikBarisPegawai(pegawai)}
+                        {...getBarisPilihStyle(bisaDipilih, isSelected)}
+                      >
+                        <Td>{index + 1}</Td>
+                        {isModeBuatPresensi ? (
+                          <Td>
+                            {!bisaDipilih ? (
+                              <Text fontSize="xs" color="gray.500">
+                                Jam lengkap
+                              </Text>
+                            ) : (
+                              <Checkbox
+                                isChecked={isSelected}
+                                pointerEvents="none"
+                              />
+                            )}
+                          </Td>
+                        ) : null}
+                        <Td whiteSpace="nowrap">
+                          {pegawai?.namaPegawai || pegawai?.nama || "-"}
                         </Td>
-                      ) : null}
-                      <Td whiteSpace="nowrap">
-                        {pegawai?.namaPegawai || pegawai?.nama || "-"}
-                      </Td>
-                      <Td whiteSpace="nowrap">{pegawai?.nip || "-"}</Td>
-                      <Td>{getUnitKerjaLabel(presensi)}</Td>
-                      <Td whiteSpace="nowrap">{fields.jamMasuk}</Td>
-                      <Td whiteSpace="nowrap">{fields.jamPulang}</Td>
-                      <Td whiteSpace="nowrap">
-                        {presensi?.jamKerja != null
-                          ? `${presensi.jamKerja / 60} jam`
-                          : "-"}
-                      </Td>
-                      <Td>{fields.status}</Td>
-                      <Td whiteSpace="nowrap">{fields.lembur}</Td>
-                      <Td>
-                        {renderAksiPegawai(pegawai, ctx)}
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </Tbody>
-            </Table>
+                        <Td whiteSpace="nowrap">{pegawai?.jabatan || "-"}</Td>
+                        <Td>{getUnitKerjaLabel(presensi)}</Td>
+                        <Td whiteSpace="nowrap">{fields.jamMasuk}</Td>
+                        <Td whiteSpace="nowrap">{fields.jamPulang}</Td>
+                        <Td whiteSpace="nowrap">
+                          {presensi?.jamKerja != null
+                            ? `${presensi.jamKerja / 60} jam`
+                            : "-"}
+                        </Td>
+                        <Td>{fields.status}</Td>
+                        <Td whiteSpace="nowrap">{fields.lembur}</Td>
+                        <Td>{renderAksiPegawai(pegawai, ctx)}</Td>
+                      </Tr>
+                    );
+                  })}
+                </Tbody>
+              </Table>
             </Box>
           )}
         </Container>

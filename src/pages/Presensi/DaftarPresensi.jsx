@@ -17,15 +17,27 @@ import {
   Badge,
   useColorMode,
   Icon,
+  Button,
+  FormControl,
+  FormLabel,
+  Input,
+  useToast,
 } from "@chakra-ui/react";
-import { FaCalendarAlt, FaUserCheck, FaSignInAlt, FaSignOutAlt } from "react-icons/fa";
+import {
+  FaCalendarAlt,
+  FaUserCheck,
+  FaSignInAlt,
+  FaSignOutAlt,
+  FaFileExcel,
+} from "react-icons/fa";
+import axios from "axios";
 import { useHistory } from "react-router-dom";
 import LayoutPegawai from "../../Componets/Pegawai/LayoutPegawai";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import moment from "moment";
 import "moment/locale/id";
-import { addDays, format, parseISO } from "date-fns";
+import { addDays, endOfWeek, format, parseISO, startOfWeek } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { getCalendarStyles } from "../../Style/calendarStyles";
 
@@ -138,8 +150,11 @@ function DaftarPresensi() {
   const [events, setEvents] = useState([]);
   const [totalPegawaiMingguan, setTotalPegawaiMingguan] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [tanggalMinggu, setTanggalMinggu] = useState(format(now, "yyyy-MM-dd"));
+  const [downloadingRekap, setDownloadingRekap] = useState(false);
   const history = useHistory();
   const { colorMode } = useColorMode();
+  const toast = useToast();
 
   const bulanLabel = useMemo(
     () => format(new Date(tahun, bulan - 1, 1), "MMMM yyyy", { locale: idLocale }),
@@ -152,6 +167,66 @@ function DaftarPresensi() {
     const hariTerisi = events.length;
     return { totalMasuk, totalPulang, hariTerisi };
   }, [events]);
+
+  const periodeMinggu = useMemo(() => {
+    const base = parseISO(tanggalMinggu);
+    const awal = startOfWeek(base, { weekStartsOn: 1 });
+    const akhir = endOfWeek(base, { weekStartsOn: 1 });
+    return {
+      tanggalAwal: format(awal, "yyyy-MM-dd"),
+      tanggalAkhir: format(akhir, "yyyy-MM-dd"),
+      label: `${format(awal, "d MMM yyyy", { locale: idLocale })} – ${format(akhir, "d MMM yyyy", { locale: idLocale })}`,
+    };
+  }, [tanggalMinggu]);
+
+  const downloadRekapMingguan = async () => {
+    setDownloadingRekap(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/presensi/get/rekap-mingguan`,
+        {
+          params: {
+            tanggalAwal: periodeMinggu.tanggalAwal,
+            tanggalAkhir: periodeMinggu.tanggalAkhir,
+          },
+          responseType: "blob",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `rekap-presensi-mingguan-${periodeMinggu.tanggalAwal}_${periodeMinggu.tanggalAkhir}.xlsx`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Berhasil",
+        description: "Rekap presensi mingguan berhasil diunduh.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error("Gagal mengunduh rekap presensi:", error);
+      toast({
+        title: "Gagal mengunduh",
+        description: "Terjadi kesalahan saat mengunduh file Excel.",
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setDownloadingRekap(false);
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -213,6 +288,55 @@ function DaftarPresensi() {
           </HStack>
 
           <Divider my={5} borderColor={cardBorder} />
+
+          <Box
+            p={4}
+            mb={6}
+            bg={cardBg}
+            border="1px solid"
+            borderColor={cardBorder}
+            borderRadius="12px"
+            boxShadow="sm"
+          >
+            <HStack
+              spacing={4}
+              align={{ base: "stretch", md: "flex-end" }}
+              flexWrap="wrap"
+              justify="space-between"
+            >
+              <FormControl maxW={{ base: "100%", md: "220px" }}>
+                <FormLabel fontSize="sm" color="gray.500" mb={1}>
+                  Pilih minggu
+                </FormLabel>
+                <Input
+                  type="date"
+                  size="sm"
+                  value={tanggalMinggu}
+                  onChange={(e) => setTanggalMinggu(e.target.value)}
+                  borderRadius="8px"
+                />
+              </FormControl>
+              <VStack align={{ base: "stretch", md: "flex-start" }} spacing={1}>
+                <Text fontSize="sm" color="gray.500">
+                  Periode rekap
+                </Text>
+                <Text fontSize="sm" fontWeight="600" color={colorMode === "dark" ? "white" : "gray.800"}>
+                  {periodeMinggu.label}
+                </Text>
+              </VStack>
+              <Button
+                leftIcon={<Icon as={FaFileExcel} />}
+                colorScheme="green"
+                size="sm"
+                onClick={downloadRekapMingguan}
+                isLoading={downloadingRekap}
+                loadingText="Mengunduh..."
+                alignSelf={{ base: "stretch", md: "flex-end" }}
+              >
+                Download Rekap Excel
+              </Button>
+            </HStack>
+          </Box>
 
           <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={4} mb={6}>
             <Box
