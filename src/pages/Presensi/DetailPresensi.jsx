@@ -215,6 +215,39 @@ function DetailPresensi() {
     [dataPegawai],
   );
 
+  const rangkumanUnitKerja = useMemo(() => {
+    const counter = new Map();
+
+    const tambah = (key, label) => {
+      const existing = counter.get(key);
+      if (existing) {
+        existing.jumlah += 1;
+      } else {
+        counter.set(key, { label, jumlah: 1 });
+      }
+    };
+
+    dataPegawai.forEach((pegawai) => {
+      const presensi = pegawai?.presensis?.[0];
+      if (!presensi) {
+        tambah("__belum_presensi__", "Belum Presensi");
+        return;
+      }
+
+      const uk = presensi?.daftarUnitKerja;
+      const key = String(presensi?.unitKerjaId ?? uk?.id ?? "__tanpa_unit__");
+      const label =
+        uk || presensi?.unitKerjaId ? getUnitKerjaLabel(presensi) : "Tanpa Unit Kerja";
+      tambah(key, label);
+    });
+
+    return Array.from(counter.values()).sort((a, b) => {
+      if (a.label === "Belum Presensi") return 1;
+      if (b.label === "Belum Presensi") return -1;
+      return a.label.localeCompare(b.label, "id");
+    });
+  }, [dataPegawai]);
+
   const isSemuaTerpilih =
     pegawaiYangBisaDipilih.length > 0 &&
     pegawaiYangBisaDipilih.every((p) => selectedPegawaiIds[p.id]);
@@ -906,6 +939,50 @@ function DetailPresensi() {
               ) : null}
             </Stack>
           </VStack>
+
+          {!loading && !errorMessage && dataPegawai.length > 0 ? (
+            <Card
+              mb={4}
+              bg={cardBg}
+              border="1px solid"
+              borderColor={cardBorder}
+              boxShadow="sm"
+            >
+              <CardHeader pb={2}>
+                <Heading size="sm">Rangkuman Pekerja per Unit Kerja</Heading>
+                <Text fontSize="sm" color={labelColor} mt={1}>
+                  Total {dataPegawai.length} pekerja pada tanggal ini
+                </Text>
+              </CardHeader>
+              <CardBody pt={0}>
+                <SimpleGrid
+                  columns={{ base: 1, sm: 2, md: 3, lg: 4 }}
+                  spacing={3}
+                >
+                  {rangkumanUnitKerja.map((item) => (
+                    <Box
+                      key={item.label}
+                      p={3}
+                      border="1px solid"
+                      borderColor={cardBorder}
+                      borderRadius="md"
+                      bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+                    >
+                      <Text fontSize="xs" color={labelColor} noOfLines={2}>
+                        {item.label}
+                      </Text>
+                      <Text fontSize="2xl" fontWeight="bold" color="teal.500">
+                        {item.jumlah}
+                      </Text>
+                      <Text fontSize="xs" color={labelColor}>
+                        pekerja
+                      </Text>
+                    </Box>
+                  ))}
+                </SimpleGrid>
+              </CardBody>
+            </Card>
+          ) : null}
 
           {loading ? (
             <Center py={8}>

@@ -2,7 +2,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import LayoutAset from "../../Componets/Aset/LayoutAset";
 import ReactPaginate from "react-paginate";
-import { BsFileEarmarkArrowDown } from "react-icons/bs";
+import {
+  BsFileEarmarkArrowDown,
+  BsPencil,
+  BsTrash,
+  BsPlusLg,
+} from "react-icons/bs";
 import "../../Style/pagination.css";
 import { Link, useHistory } from "react-router-dom";
 import Foto from "../../assets/add_photo.png";
@@ -311,23 +316,40 @@ function LaporanPersediaanKeluar(props) {
   const showAksiKeluar =
     DataPersediaan?.periode?.statusLaporan === "buka";
 
-  const renderRowActions = (row, group) => {
-    if (!showAksiKeluar || !row?.stokKeluarId) return null;
+  const getGroupBg = (index) =>
+    colorMode === "dark"
+      ? index % 2 === 0
+        ? "gray.700"
+        : "gray.800"
+      : index % 2 === 0
+        ? "gray.50"
+        : "white";
+
+  const renderRowActions = (row, group, compact = false) => {
+    if (!showAksiKeluar || !row?.stokKeluarId) {
+      return compact ? null : (
+        <Text fontSize="sm" color="gray.400">
+          -
+        </Text>
+      );
+    }
 
     return (
-      <HStack spacing={1} mt={1} flexWrap="wrap">
+      <HStack spacing={2} flexWrap="nowrap">
         <Button
-          size="xs"
+          size="sm"
           variant="outline"
           colorScheme="blue"
+          leftIcon={<BsPencil />}
           onClick={() => openEditModal(row, group)}
         >
           Edit
         </Button>
         <Button
-          size="xs"
+          size="sm"
           variant="outline"
           colorScheme="red"
+          leftIcon={<BsTrash />}
           onClick={() => openHapusModal(row, group)}
         >
           Hapus
@@ -447,6 +469,7 @@ function LaporanPersediaanKeluar(props) {
         "No.",
         "Nama Persediaan",
         "Kode Barang",
+        ...(showUnitKerjaColumn ? ["Unit Kerja"] : []),
         "Harga Satuan",
         "Stok Awal",
         "Tanggal",
@@ -468,6 +491,7 @@ function LaporanPersediaanKeluar(props) {
             rowNumber,
             idx === 0 ? group.namaPersediaan : "",
             idx === 0 ? group.kodeBarang : "",
+            ...(showUnitKerjaColumn ? [idx === 0 ? group.unitKerja : ""] : []),
             group.isHargaSatuanUniform
               ? group.mergedHargaSatuan
               : row.hargaSatuan,
@@ -480,6 +504,11 @@ function LaporanPersediaanKeluar(props) {
             idx === 0 ? group.sisa : "",
           ]);
 
+          const hargaCol = showUnitKerjaColumn ? 5 : 4;
+          const stokAwalCol = showUnitKerjaColumn ? 6 : 5;
+          const jumlahKeluarCol = showUnitKerjaColumn ? 9 : 8;
+          const sisaCol = showUnitKerjaColumn ? 10 : 9;
+
           // Apply styles
           dataRow.eachCell((cell, colNumber) => {
             if (colNumber === 1) {
@@ -488,10 +517,14 @@ function LaporanPersediaanKeluar(props) {
                 ...dataStyle,
                 alignment: { horizontal: "center", vertical: "middle" },
               };
-            } else if (colNumber === 4) {
+            } else if (colNumber === hargaCol) {
               // Harga Satuan
               cell.style = currencyStyle;
-            } else if (colNumber === 5 || colNumber === 8 || colNumber === 9) {
+            } else if (
+              colNumber === stokAwalCol ||
+              colNumber === jumlahKeluarCol ||
+              colNumber === sisaCol
+            ) {
               // Stok Awal, Jumlah Keluar, Sisa
               cell.style = numberStyle;
             } else {
@@ -571,6 +604,10 @@ function LaporanPersediaanKeluar(props) {
       label: val.unitKerja,
     })) || []),
   ];
+
+  const showUnitKerjaColumn = filterUnitKerjaId === FILTER_ALL;
+  const tableColSpan =
+    (showUnitKerjaColumn ? 12 : 11) + (showAksiKeluar ? 1 : 0);
   // Siapkan data terkelompok per persediaan, agar Nama Persediaan tidak berulang
   const grouped = Array.isArray(DataPersediaan?.data)
     ? DataPersediaan.data.map((item) => {
@@ -613,9 +650,11 @@ function LaporanPersediaanKeluar(props) {
           ? stokMasukIds[0] ?? null
           : null;
         return {
-          groupKey: item?.persediaanId ?? item?.kodeBarang ?? Math.random(),
+          groupKey: item?.stokMasukId ?? item?.persediaanId ?? item?.kodeBarang ?? Math.random(),
           namaPersediaan: item?.namaPersediaan || "-",
           stokMasukId: item?.stokMasukId,
+          unitKerja: item?.unitKerja || "-",
+          unitKerjaId: item?.unitKerjaId ?? null,
           kodeBarang: item?.kodeBarang || "-",
           sisa: item?.sisa ?? 0,
           isHargaSatuanUniform,
@@ -773,6 +812,9 @@ function LaporanPersediaanKeluar(props) {
                 <Text fontSize="xs" opacity={0.85}>#{no}</Text>
                 <Text fontWeight="bold" fontSize="md">{group.namaPersediaan}</Text>
                 <Text fontSize="sm" opacity={0.9}>Kode: {group.kodeBarang}</Text>
+                {showUnitKerjaColumn && (
+                  <Text fontSize="sm" opacity={0.9}>Unit: {group.unitKerja}</Text>
+                )}
               </Box>
             </HStack>
           </Box>
@@ -829,7 +871,7 @@ function LaporanPersediaanKeluar(props) {
                     value={row.jumlahKeluar}
                     valueColor="red.500"
                   />
-                  {renderRowActions(row, group)}
+                  {renderRowActions(row, group, true)}
                 </Box>
               ))
             )}
@@ -839,10 +881,11 @@ function LaporanPersediaanKeluar(props) {
                 w="full"
                 mt={3}
                 size="sm"
-                colorScheme="blue"
+                variant="primary"
+                leftIcon={<BsPlusLg />}
                 onClick={() => handleTambahKeluar(group.stokMasukId, group.sisa)}
               >
-                + Tambah Pengeluaran
+                Tambah Pengeluaran
               </Button>
             )}
           </Box>
@@ -869,170 +912,208 @@ function LaporanPersediaanKeluar(props) {
           >
             <PageHeader />
 
-            <Flex
-              mb={4}
-              direction={{ base: "column", md: "row" }}
-              align={{ base: "stretch", md: "flex-end" }}
-              gap={4}
+            <Box
+              mb={5}
+              p={4}
+              borderRadius="md"
+              border="1px solid"
+              borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+              bg={colorMode === "dark" ? "gray.700" : "gray.50"}
             >
-              <FormControl maxW={{ base: "full", md: "320px" }}>
-                <FormLabel fontSize="sm">Filter Unit Kerja</FormLabel>
-                <Select2
-                  options={unitKerjaFilterOptions}
-                  placeholder="Pilih unit kerja"
-                  value={
-                    filterUnitKerjaId
-                      ? unitKerjaFilterOptions.find(
-                          (opt) => opt.value === filterUnitKerjaId
-                        ) || null
-                      : null
-                  }
-                  onChange={(selectedOption) => {
-                    setFilterUnitKerjaId(selectedOption?.value || null);
-                  }}
-                  components={{
-                    DropdownIndicator: () => null,
-                    IndicatorSeparator: () => null,
-                  }}
-                  chakraStyles={{
-                    container: (provided) => ({
-                      ...provided,
-                      borderRadius: "6px",
-                    }),
-                    control: (provided) => ({
-                      ...provided,
-                      backgroundColor: "terang",
-                      border: "0px",
-                      minHeight: "40px",
-                    }),
-                    option: (provided, state) => ({
-                      ...provided,
-                      bg: state.isFocused ? "aset" : "white",
-                      color: state.isFocused ? "white" : "black",
-                    }),
-                  }}
-                />
-              </FormControl>
-              <Button
-                leftIcon={<BsFileEarmarkArrowDown />}
-                colorScheme="green"
-                onClick={downloadExcel}
-                size="md"
-                w={{ base: "full", md: "auto" }}
-                alignSelf={{ base: "stretch", md: "flex-end" }}
+              <Flex
+                direction={{ base: "column", md: "row" }}
+                align={{ base: "stretch", md: "flex-end" }}
+                gap={4}
               >
-                Download Excel
-              </Button>
-            </Flex>
+                <FormControl maxW={{ base: "full", md: "320px" }} flexShrink={0}>
+                  <FormLabel fontSize="sm" mb={1} fontWeight="semibold">
+                    Filter Unit Kerja
+                  </FormLabel>
+                  <Select2
+                    options={unitKerjaFilterOptions}
+                    placeholder="Pilih unit kerja"
+                    value={
+                      filterUnitKerjaId
+                        ? unitKerjaFilterOptions.find(
+                            (opt) => opt.value === filterUnitKerjaId
+                          ) || null
+                        : null
+                    }
+                    onChange={(selectedOption) => {
+                      setFilterUnitKerjaId(selectedOption?.value || null);
+                    }}
+                    components={{
+                      DropdownIndicator: () => null,
+                      IndicatorSeparator: () => null,
+                    }}
+                    chakraStyles={{
+                      container: (provided) => ({
+                        ...provided,
+                        borderRadius: "6px",
+                      }),
+                      control: (provided) => ({
+                        ...provided,
+                        backgroundColor: "terang",
+                        border: "0px",
+                        minHeight: "42px",
+                        boxShadow: "sm",
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        bg: state.isFocused ? "aset" : "white",
+                        color: state.isFocused ? "white" : "black",
+                      }),
+                    }}
+                  />
+                </FormControl>
+                <Spacer display={{ base: "none", md: "block" }} />
+                <Button
+                  leftIcon={<BsFileEarmarkArrowDown />}
+                  variant="primary"
+                  onClick={downloadExcel}
+                  size="md"
+                  px={6}
+                  w={{ base: "full", md: "auto" }}
+                  flexShrink={0}
+                >
+                  Download Excel
+                </Button>
+              </Flex>
+            </Box>
 
             <Box display={{ base: "block", md: "none" }} mb={4}>
               {renderMobileCards()}
             </Box>
 
-            <Box display={{ base: "none", md: "block" }} overflowX="auto">
-            <Table variant={"aset"}>
+            <Box
+              display={{ base: "none", md: "block" }}
+              overflowX="auto"
+              borderRadius="md"
+              border="1px solid"
+              borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+            >
+            <Table variant={"aset"} size="sm">
               <Thead>
                 <Tr>
-                  <Th>No.</Th>
-                  <Th>Foto</Th>
-                  <Th maxWidth={"20px"}>Nama Persediaan</Th>
-                  <Th>Kode Barang</Th>
-                  <Th>Harga Satuan</Th>
-                  <Th>Stok Awal</Th>
-                  <Th>Tanggal</Th>
-                  <Th>Tujuan</Th>
-                  <Th isNumeric>Jumlah Keluar</Th>
-                  <Th>Sisa</Th>
-                  <Th>Aksi</Th>
+                  <Th minW="50px" textAlign="center">No.</Th>
+                  <Th minW="70px" textAlign="center">Foto</Th>
+                  <Th minW="180px">Nama Persediaan</Th>
+                  <Th minW="120px">Kode Barang</Th>
+                  {showUnitKerjaColumn && <Th minW="140px">Unit Kerja</Th>}
+                  <Th minW="130px" isNumeric>Harga Satuan</Th>
+                  <Th minW="90px" textAlign="center">Stok Awal</Th>
+                  <Th minW="110px">Tanggal</Th>
+                  <Th minW="160px">Tujuan</Th>
+                  <Th minW="100px" isNumeric>Jumlah Keluar</Th>
+                  <Th minW="70px" textAlign="center">Sisa</Th>
+                  {showAksiKeluar && (
+                    <Th minW="110px" textAlign="center">Tambah</Th>
+                  )}
+                  <Th minW={showAksiKeluar ? "200px" : "120px"} textAlign="center">
+                    {showAksiKeluar ? "Kelola" : "Aksi"}
+                  </Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {grouped && grouped.length > 0 ? (
                   grouped.flatMap((group) => {
                     const rowCount = group.rows.length;
-                    const groupBg = groupNumber % 2 === 0 ? "gray.50" : "white";
+                    const currentGroupNo = ++groupNumber;
+                    const groupBg = getGroupBg(currentGroupNo - 1);
+                    const cellProps = {
+                      rowSpan: rowCount,
+                      bg: groupBg,
+                      verticalAlign: "middle",
+                    };
                     const noCell = (
-                      <Td rowSpan={rowCount} bg={groupBg} fontWeight="bold">
-                        {++groupNumber}
+                      <Td {...cellProps} fontWeight="bold" textAlign="center">
+                        {currentGroupNo}
                       </Td>
                     );
                     const fotoCell = (
-                      <Td rowSpan={rowCount} bg={groupBg}>
+                      <Td {...cellProps} textAlign="center">
                         {renderFoto(group.foto)}
                       </Td>
                     );
                     const namaCell = (
-                      <Td rowSpan={rowCount} bg={groupBg} fontWeight="bold" maxW="200px">
+                      <Td {...cellProps} fontWeight="semibold" maxW="220px" whiteSpace="normal">
                         {group.namaPersediaan}
                       </Td>
                     );
                     const kodeCell = (
-                      <Td rowSpan={rowCount} bg={groupBg}>{group.kodeBarang}</Td>
+                      <Td {...cellProps}>{group.kodeBarang}</Td>
                     );
+                    const unitKerjaCell = showUnitKerjaColumn ? (
+                      <Td {...cellProps}>{group.unitKerja}</Td>
+                    ) : null;
                     const sisaCell = (
-                      <Td rowSpan={rowCount} bg={groupBg} fontWeight="bold" color="green.600">
-                        {group.sisa}
+                      <Td {...cellProps} fontWeight="bold" textAlign="center" color="green.500">
+                        <Badge colorScheme="green" fontSize="sm" px={2}>
+                          {group.sisa}
+                        </Badge>
                       </Td>
                     );
                     const hargaMergedCell = group.isHargaSatuanUniform ? (
-                      <Td rowSpan={rowCount} bg={groupBg} isNumeric>
+                      <Td {...cellProps} isNumeric whiteSpace="nowrap">
                         {formatRupiah(group.mergedHargaSatuan)}
                       </Td>
                     ) : null;
                     const stokAwalCell = (
-                      <Td rowSpan={rowCount} bg={groupBg} fontWeight="semibold">
+                      <Td {...cellProps} fontWeight="semibold" textAlign="center">
                         {group.stokAwal}
                       </Td>
                     );
+                    const tambahCell = showAksiKeluar ? (
+                      <Td {...cellProps} textAlign="center">
+                        <Button
+                          onClick={() =>
+                            handleTambahKeluar(group.stokMasukId, group.sisa)
+                          }
+                          size="sm"
+                          variant="primary"
+                          leftIcon={<BsPlusLg />}
+                          whiteSpace="nowrap"
+                        >
+                          Tambah
+                        </Button>
+                      </Td>
+                    ) : null;
                     return group.rows.map((row, idx) => (
-                      <Tr key={row.key} bg={idx === 0 ? groupBg : undefined}>
+                      <Tr key={row.key}>
                         {idx === 0 && noCell}
                         {idx === 0 && fotoCell}
                         {idx === 0 && namaCell}
                         {idx === 0 && kodeCell}
+                        {idx === 0 && unitKerjaCell}
                         {group.isHargaSatuanUniform ? (
                           idx === 0 && hargaMergedCell
                         ) : (
-                          <Td isNumeric>{formatRupiah(row.hargaSatuan)}</Td>
+                          <Td bg={groupBg} isNumeric whiteSpace="nowrap" verticalAlign="middle">
+                            {formatRupiah(row.hargaSatuan)}
+                          </Td>
                         )}
                         {idx === 0 && stokAwalCell}
-                        <Td>
+                        <Td bg={groupBg} verticalAlign="middle" whiteSpace="nowrap">
                           {row.tanggal ? formatTanggal(row.tanggal) : "-"}
                         </Td>
-                        <Td maxW="180px" whiteSpace="normal">
+                        <Td bg={groupBg} maxW="200px" whiteSpace="normal" verticalAlign="middle">
                           {row.tujuan || "-"}
                         </Td>
-                        <Td isNumeric fontWeight="bold" color="red.500">
+                        <Td bg={groupBg} isNumeric fontWeight="bold" color="red.500" verticalAlign="middle">
                           {row.jumlahKeluar > 0 ? row.jumlahKeluar : "-"}
                         </Td>
-
                         {idx === 0 && sisaCell}
-                        <Td>
-                          <Flex direction="column" gap={1} align="flex-start">
-                            {idx === 0 && showAksiKeluar && (
-                              <Button
-                                onClick={() =>
-                                  handleTambahKeluar(
-                                    group.stokMasukId,
-                                    group.sisa,
-                                  )
-                                }
-                                size="sm"
-                                colorScheme="blue"
-                              >
-                                Tambah
-                              </Button>
-                            )}
-                            {renderRowActions(row, group)}
-                          </Flex>
+                        {idx === 0 && tambahCell}
+                        <Td bg={groupBg} verticalAlign="middle">
+                          {renderRowActions(row, group)}
                         </Td>
                       </Tr>
                     ));
                   })
                 ) : (
                   <Tr>
-                    <Td colSpan={11} textAlign="center">
-                      Tidak ada data persediaan keluar
+                    <Td colSpan={tableColSpan} textAlign="center" py={8}>
+                      <Text color="gray.500">Tidak ada data persediaan keluar</Text>
                     </Td>
                   </Tr>
                 )}
