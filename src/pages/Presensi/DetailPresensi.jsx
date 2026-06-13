@@ -64,6 +64,7 @@ function DetailPresensi() {
   const [loadingUnitKerja, setLoadingUnitKerja] = useState(false);
   const [statusPresensiList, setStatusPresensiList] = useState([]);
   const [loadingStatusPresensi, setLoadingStatusPresensi] = useState(false);
+  const [searchNamaPegawai, setSearchNamaPegawai] = useState("");
   const {
     isOpen: isModalPresensiOpen,
     onOpen: onOpenModalPresensi,
@@ -197,11 +198,35 @@ function DetailPresensi() {
     setEditingByPegawai((prev) => ({ ...prev, [pegawaiId]: true }));
   };
 
+  const getNamaPegawai = (pegawai) =>
+    pegawai?.namaPegawai || pegawai?.nama || "";
+
+  const matchesSearchPegawai = (pegawai, query) => {
+    const trimmed = query.trim().toLowerCase();
+    if (!trimmed) return true;
+
+    const nama = getNamaPegawai(pegawai).toLowerCase();
+    const nip = (pegawai?.nip || "").toLowerCase();
+    const jabatan = (pegawai?.jabatan || "").toLowerCase();
+
+    return (
+      nama.includes(trimmed) ||
+      nip.includes(trimmed) ||
+      jabatan.includes(trimmed)
+    );
+  };
+
+  const filteredDataPegawai = useMemo(
+    () => dataPegawai.filter((p) => matchesSearchPegawai(p, searchNamaPegawai)),
+    [dataPegawai, searchNamaPegawai],
+  );
+
   const handleToggleModeBuatPresensi = () => {
     setIsModeBuatPresensi((prev) => {
       const nextMode = !prev;
       if (!nextMode) {
         setSelectedPegawaiIds({});
+        setSearchNamaPegawai("");
       }
       return nextMode;
     });
@@ -215,9 +240,9 @@ function DetailPresensi() {
     }));
   };
 
-  const pegawaiYangBisaDipilih = useMemo(
-    () => dataPegawai.filter((p) => bisaDipilihBuatPresensi(p)),
-    [dataPegawai],
+  const pegawaiTampilYangBisaDipilih = useMemo(
+    () => filteredDataPegawai.filter((p) => bisaDipilihBuatPresensi(p)),
+    [filteredDataPegawai],
   );
 
   const rangkumanUnitKerja = useMemo(() => {
@@ -254,22 +279,30 @@ function DetailPresensi() {
   }, [dataPegawai]);
 
   const isSemuaTerpilih =
-    pegawaiYangBisaDipilih.length > 0 &&
-    pegawaiYangBisaDipilih.every((p) => selectedPegawaiIds[p.id]);
+    pegawaiTampilYangBisaDipilih.length > 0 &&
+    pegawaiTampilYangBisaDipilih.every((p) => selectedPegawaiIds[p.id]);
 
   const isSebagianTerpilih =
-    pegawaiYangBisaDipilih.some((p) => selectedPegawaiIds[p.id]) &&
+    pegawaiTampilYangBisaDipilih.some((p) => selectedPegawaiIds[p.id]) &&
     !isSemuaTerpilih;
 
   const handleTogglePilihSemua = (checked) => {
     if (checked) {
-      const next = {};
-      pegawaiYangBisaDipilih.forEach((p) => {
-        next[p.id] = true;
+      setSelectedPegawaiIds((prev) => {
+        const next = { ...prev };
+        pegawaiTampilYangBisaDipilih.forEach((p) => {
+          next[p.id] = true;
+        });
+        return next;
       });
-      setSelectedPegawaiIds(next);
     } else {
-      setSelectedPegawaiIds({});
+      setSelectedPegawaiIds((prev) => {
+        const next = { ...prev };
+        pegawaiTampilYangBisaDipilih.forEach((p) => {
+          delete next[p.id];
+        });
+        return next;
+      });
     }
   };
 
@@ -965,6 +998,39 @@ function DetailPresensi() {
                 </Button>
               ) : null}
             </Stack>
+
+            {!loading && !errorMessage && dataPegawai.length > 0 ? (
+              <FormControl>
+                <FormLabel fontSize="sm" mb={1}>
+                  Cari Pegawai
+                </FormLabel>
+                <HStack spacing={2}>
+                  <Input
+                    size="sm"
+                    placeholder="Cari nama, NIP, atau jabatan..."
+                    value={searchNamaPegawai}
+                    onChange={(e) => setSearchNamaPegawai(e.target.value)}
+                    bg={cardBg}
+                  />
+                  {searchNamaPegawai ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSearchNamaPegawai("")}
+                      flexShrink={0}
+                    >
+                      Reset
+                    </Button>
+                  ) : null}
+                </HStack>
+                {searchNamaPegawai.trim() ? (
+                  <Text fontSize="xs" color={labelColor} mt={1}>
+                    Menampilkan {filteredDataPegawai.length} dari{" "}
+                    {dataPegawai.length} pegawai
+                  </Text>
+                ) : null}
+              </FormControl>
+            ) : null}
           </VStack>
 
           {!loading && !errorMessage && dataPegawai.length > 0 ? (
@@ -1021,9 +1087,24 @@ function DetailPresensi() {
             <Center py={12}>
               <Text color="gray.500">Data presensi tidak ditemukan.</Text>
             </Center>
+          ) : filteredDataPegawai.length === 0 ? (
+            <Center py={12}>
+              <VStack spacing={2}>
+                <Text color="gray.500">
+                  Tidak ada pegawai yang cocok dengan pencarian.
+                </Text>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSearchNamaPegawai("")}
+                >
+                  Reset Pencarian
+                </Button>
+              </VStack>
+            </Center>
           ) : isMobile ? (
             <Box>
-              {isModeBuatPresensi && pegawaiYangBisaDipilih.length > 0 ? (
+              {isModeBuatPresensi && pegawaiTampilYangBisaDipilih.length > 0 ? (
                 <HStack
                   mb={3}
                   p={3}
@@ -1042,11 +1123,11 @@ function DetailPresensi() {
                     isIndeterminate={isSebagianTerpilih}
                     pointerEvents="none"
                   >
-                    Pilih semua ({pegawaiYangBisaDipilih.length})
+                    Pilih semua ({pegawaiTampilYangBisaDipilih.length})
                   </Checkbox>
                 </HStack>
               ) : null}
-              {dataPegawai.map((pegawai, index) => (
+              {filteredDataPegawai.map((pegawai, index) => (
                 <PegawaiPresensiCard
                   key={pegawai?.id || `pegawai-${index}`}
                   pegawai={pegawai}
@@ -1088,7 +1169,7 @@ function DetailPresensi() {
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {dataPegawai.map((pegawai, index) => {
+                  {filteredDataPegawai.map((pegawai, index) => {
                     const ctx = getPegawaiCtx(pegawai, index);
                     const { presensi, isSelected, bisaDipilih, fields } = ctx;
 
