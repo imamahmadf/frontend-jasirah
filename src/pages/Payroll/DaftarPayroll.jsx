@@ -89,7 +89,12 @@ const parseSlipGajiError = async (err, fallback) => {
   return errorMessage;
 };
 
-const downloadSlipGaji = async (pegawaiIds, tanggalAwal, tanggalAkhir, token) => {
+const downloadSlipGaji = async (
+  pegawaiIds,
+  tanggalAwal,
+  tanggalAkhir,
+  token,
+) => {
   const res = await axios.post(
     `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/payroll/post/slip-gaji`,
     {
@@ -233,6 +238,30 @@ function DaftarPayroll() {
     };
   };
 
+  const checkboxOnLightBg = {
+    colorScheme: "red",
+    borderColor: colorMode === "dark" ? "gray.400" : "gray.500",
+    _checked: {
+      borderColor: "pegawai",
+    },
+  };
+
+  const checkboxOnRedHeader = {
+    sx: {
+      ".chakra-checkbox__control": {
+        borderWidth: "2px",
+        borderColor: "white",
+        bg: "transparent",
+      },
+      ".chakra-checkbox__control[data-checked], .chakra-checkbox__control[data-indeterminate]":
+        {
+          bg: "white",
+          borderColor: "white",
+          color: "pegawai",
+        },
+    },
+  };
+
   const togglePegawaiSelect = (id) => {
     setSelectedPegawaiIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -372,7 +401,8 @@ function DaftarPayroll() {
       toast({
         title: "Gagal",
         description:
-          err?.response?.data?.message || "Terjadi kesalahan saat membuat payroll",
+          err?.response?.data?.message ||
+          "Terjadi kesalahan saat membuat payroll",
         status: "error",
         duration: 3000,
         isClosable: true,
@@ -593,15 +623,34 @@ function DaftarPayroll() {
   ]);
 
   // Komponen Card untuk Mobile View
-  const PegawaiCard = ({ item, index }) => (
+  const PegawaiCard = ({ item, index }) => {
+    const isSelected = selectedPegawaiIds.includes(item.id);
+
+    return (
     <Card
       key={item.id || index}
       mb={4}
-      bg={colorMode === "dark" ? "gray.800" : "white"}
+      bg={
+        isSelected
+          ? colorMode === "dark"
+            ? "blue.900"
+            : "blue.50"
+          : colorMode === "dark"
+            ? "gray.800"
+            : "white"
+      }
       border="1px solid"
-      borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
+      borderColor={
+        isSelected
+          ? "pegawai"
+          : colorMode === "dark"
+            ? "gray.700"
+            : "gray.200"
+      }
       borderRadius="12px"
       boxShadow="sm"
+      cursor="pointer"
+      onClick={() => togglePegawaiSelect(item.id)}
       _hover={{
         boxShadow: "md",
         transform: "translateY(-2px)",
@@ -613,27 +662,31 @@ function DaftarPayroll() {
         borderBottom="1px solid"
         borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
       >
-        <Flex justify="space-between" align="center">
-          <HStack spacing={3}>
+        <Flex justify="space-between" align="flex-start" gap={3}>
+          <HStack spacing={3} align="flex-start" flex={1} minW={0}>
             <Checkbox
-              colorScheme="pegawai"
-              isChecked={selectedPegawaiIds.includes(item.id)}
+              {...checkboxOnLightBg}
+              mt={1}
+              flexShrink={0}
+              isChecked={isSelected}
+              onClick={(e) => e.stopPropagation()}
               onChange={() => togglePegawaiSelect(item.id)}
             />
-            <VStack align="start" spacing={1}>
-            <Text
-              fontSize="lg"
-              fontWeight="bold"
-              color={colorMode === "dark" ? "white" : "gray.800"}
-            >
-              {item.nama}
-            </Text>
-            <Text
-              fontSize="xs"
-              color={colorMode === "dark" ? "gray.400" : "gray.500"}
-            >
-              No. {page * limit + index + 1}
-            </Text>
+            <VStack align="start" spacing={1} flex={1} minW={0}>
+              <Text
+                fontSize="lg"
+                fontWeight="bold"
+                color={colorMode === "dark" ? "white" : "gray.800"}
+                noOfLines={2}
+              >
+                {item.nama}
+              </Text>
+              <Text
+                fontSize="xs"
+                color={colorMode === "dark" ? "gray.400" : "gray.500"}
+              >
+                No. {page * limit + index + 1}
+              </Text>
             </VStack>
           </HStack>
           {item?.statusPegawai?.status && (
@@ -786,7 +839,13 @@ function DaftarPayroll() {
             borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
           />
 
-          <Flex gap={2} justify="flex-end" wrap="wrap">
+          <Flex
+            gap={2}
+            justify="flex-end"
+            wrap="wrap"
+            direction={{ base: "column", sm: "row" }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <Tooltip label="Lihat Detail" hasArrow>
               <Button
                 onClick={() =>
@@ -795,8 +854,7 @@ function DaftarPayroll() {
                 variant={"primary"}
                 size="sm"
                 leftIcon={<BsEyeFill />}
-                flex="1"
-                minW="120px"
+                w={{ base: "100%", sm: "auto" }}
               >
                 Detail
               </Button>
@@ -806,8 +864,7 @@ function DaftarPayroll() {
                 variant={"cancle"}
                 size="sm"
                 leftIcon={<BsTrashFill />}
-                flex="1"
-                minW="120px"
+                w={{ base: "100%", sm: "auto" }}
               >
                 Hapus
               </Button>
@@ -816,7 +873,8 @@ function DaftarPayroll() {
         </VStack>
       </CardBody>
     </Card>
-  );
+    );
+  };
   return (
     <LayoutPegawai>
       {isLoading ? (
@@ -875,28 +933,39 @@ function DaftarPayroll() {
                     </Text>
                   )}
                 </Box>
-                <HStack spacing={2} wrap="wrap">
+                <Flex
+                  gap={3}
+                  wrap="wrap"
+                  w={isMobile ? "100%" : "auto"}
+                  justify={isMobile ? "stretch" : "flex-end"}
+                  direction={isMobile ? "column" : "row"}
+                >
                   <Button
                     variant="outline"
                     leftIcon={<BsDownload />}
                     onClick={handleOpenSlipGaji}
                     size={isMobile ? "sm" : "md"}
+                    w={isMobile ? "100%" : "auto"}
+                    borderColor={
+                      colorMode === "dark" ? "gray.600" : "gray.300"
+                    }
+                    _hover={{
+                      bg: colorMode === "dark" ? "gray.700" : "gray.50",
+                    }}
                   >
                     {isMobile ? "Slip Gaji" : "Generate Slip Gaji"}
-                    {selectedPegawaiIds.length > 0 &&
-                      ` (${selectedPegawaiIds.length})`}
                   </Button>
                   <Button
                     variant="primary"
                     leftIcon={<BsPersonPlusFill />}
                     onClick={handleOpenTambah}
                     size={isMobile ? "sm" : "md"}
+                    fontWeight="semibold"
+                    w={isMobile ? "100%" : "auto"}
                   >
-                    Tambah Payroll
-                    {selectedPegawaiIds.length > 0 &&
-                      ` (${selectedPegawaiIds.length})`}
+                    {isMobile ? "Tambah" : "Tambah Payroll"}
                   </Button>
-                </HStack>
+                </Flex>
               </Flex>
 
               <Divider
@@ -904,6 +973,37 @@ function DaftarPayroll() {
                 borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
               />
             </Box>
+
+            {selectedPegawaiIds.length > 0 && (
+              <Flex
+                mb={4}
+                p={3}
+                borderRadius="8px"
+                border="1px solid"
+                borderColor={colorMode === "dark" ? "blue.700" : "blue.200"}
+                bg={colorMode === "dark" ? "blue.900" : "blue.50"}
+                align="center"
+                justify="space-between"
+                gap={3}
+                wrap="wrap"
+              >
+                <Text
+                  fontSize="sm"
+                  fontWeight="semibold"
+                  color={colorMode === "dark" ? "blue.100" : "blue.800"}
+                >
+                  {selectedPegawaiIds.length} pegawai dipilih
+                </Text>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  colorScheme="blue"
+                  onClick={() => setSelectedPegawaiIds([])}
+                >
+                  Batal pilih
+                </Button>
+              </Flex>
+            )}
 
             {/* Filter Section untuk Mobile */}
             {isMobile && (
@@ -1058,40 +1158,6 @@ function DaftarPayroll() {
                         chakraStyles={getSelect2Styles(colorMode)}
                       />
                     </FormControl>
-                  </SimpleGrid>
-
-                  <SimpleGrid columns={2} spacing={3}>
-                    <FormControl>
-                      <FormLabel
-                        fontSize="sm"
-                        color={colorMode === "dark" ? "gray.300" : "gray.700"}
-                        fontWeight="semibold"
-                      >
-                        Unit Kerja
-                      </FormLabel>
-                      <Select2
-                        options={dataSeed?.resultUnitKerja?.map((val) => ({
-                          value: val.id,
-                          label: `${val.unitKerja}`,
-                        }))}
-                        placeholder="Pilih Unit Kerja"
-                        focusBorderColor={getSelect2FocusColor(colorMode)}
-                        value={getSelectValue(
-                          filterUnitKerjaId,
-                          dataSeed?.resultUnitKerja?.map((val) => ({
-                            id: val.id,
-                            label: val.unitKerja,
-                            unitKerja: val.unitKerja,
-                          })),
-                        )}
-                        onChange={(selectedOption) => {
-                          setFilterUnitKerjaId(selectedOption?.value || null);
-                        }}
-                        isClearable
-                        components={getSelect2Components()}
-                        chakraStyles={getSelect2Styles(colorMode)}
-                      />
-                    </FormControl>
 
                     <FormControl>
                       <FormLabel
@@ -1126,6 +1192,38 @@ function DaftarPayroll() {
                     </FormControl>
                   </SimpleGrid>
 
+                  <FormControl>
+                    <FormLabel
+                      fontSize="sm"
+                      color={colorMode === "dark" ? "gray.300" : "gray.700"}
+                      fontWeight="semibold"
+                    >
+                      Unit Kerja
+                    </FormLabel>
+                      <Select2
+                        options={dataSeed?.resultUnitKerja?.map((val) => ({
+                          value: val.id,
+                          label: `${val.unitKerja}`,
+                        }))}
+                        placeholder="Pilih Unit Kerja"
+                        focusBorderColor={getSelect2FocusColor(colorMode)}
+                        value={getSelectValue(
+                          filterUnitKerjaId,
+                          dataSeed?.resultUnitKerja?.map((val) => ({
+                            id: val.id,
+                            label: val.unitKerja,
+                            unitKerja: val.unitKerja,
+                          })),
+                        )}
+                        onChange={(selectedOption) => {
+                          setFilterUnitKerjaId(selectedOption?.value || null);
+                        }}
+                        isClearable
+                        components={getSelect2Components()}
+                        chakraStyles={getSelect2Styles(colorMode)}
+                      />
+                  </FormControl>
+
                   <Button
                     onClick={resetFilter}
                     variant={"secondary"}
@@ -1148,12 +1246,12 @@ function DaftarPayroll() {
                 borderColor={colorMode === "dark" ? "gray.700" : "gray.200"}
                 bg={colorMode === "dark" ? "gray.800" : "white"}
               >
-                <Table variant={"pegawai"} size="sm">
+                <Table variant={"pegawai"} size="sm" minW="1100px">
                   <Thead>
                     <Tr bg={colorMode === "dark" ? "pegawaiGelap" : "pegawai"}>
                       <Th color="white" fontWeight="semibold" w="40px">
                         <Checkbox
-                          colorScheme="whiteAlpha"
+                          {...checkboxOnRedHeader}
                           isChecked={isAllPageSelected}
                           isIndeterminate={
                             selectedPegawaiIds.some((id) =>
@@ -1414,18 +1512,37 @@ function DaftarPayroll() {
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {dataPegawai?.result?.map((item, index) => (
+                    {dataPegawai?.result?.map((item, index) => {
+                      const isSelected = selectedPegawaiIds.includes(item.id);
+
+                      return (
                       <Tr
                         key={item.id || index}
+                        cursor="pointer"
+                        onClick={() => togglePegawaiSelect(item.id)}
+                        bg={
+                          isSelected
+                            ? colorMode === "dark"
+                              ? "blue.900"
+                              : "blue.50"
+                            : undefined
+                        }
                         _hover={{
-                          bg: colorMode === "dark" ? "gray.700" : "gray.50",
+                          bg: isSelected
+                            ? colorMode === "dark"
+                              ? "blue.800"
+                              : "blue.100"
+                            : colorMode === "dark"
+                              ? "gray.700"
+                              : "gray.50",
                         }}
                         transition="background-color 0.2s"
                       >
                         <Td>
                           <Checkbox
-                            colorScheme="pegawai"
-                            isChecked={selectedPegawaiIds.includes(item.id)}
+                            {...checkboxOnLightBg}
+                            isChecked={isSelected}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={() => togglePegawaiSelect(item.id)}
                           />
                         </Td>
@@ -1514,7 +1631,7 @@ function DaftarPayroll() {
                             {getPayrollBadge(item.payrolls).label}
                           </Badge>
                         </Td>
-                        <Td>
+                        <Td onClick={(e) => e.stopPropagation()}>
                           <Flex gap={2}>
                             <Tooltip label="Lihat Detail" hasArrow>
                               <Button
@@ -1542,7 +1659,8 @@ function DaftarPayroll() {
                           </Flex>
                         </Td>
                       </Tr>
-                    ))}
+                      );
+                    })}
                   </Tbody>
                 </Table>
               </Box>
@@ -1574,6 +1692,7 @@ function DaftarPayroll() {
                 <Text fontSize="sm">Coba ubah filter pencarian</Text>
               </Box>
             )}
+            {dataPegawai?.result?.length > 0 && pages > 0 && (
             <Box
               mt={6}
               display="flex"
@@ -1597,168 +1716,181 @@ function DaftarPayroll() {
                 previousClassName={"item previous"}
               />
             </Box>
+            )}
           </Container>
         </Box>
       )}
-        <Modal
-          isOpen={isTambahOpen}
-          onClose={() => {
-            onTambahClose();
-          }}
-          isCentered
+      <Modal
+        isOpen={isTambahOpen}
+        onClose={() => {
+          onTambahClose();
+        }}
+        isCentered={!isMobile}
+        size={{ base: "full", md: "md" }}
+        scrollBehavior="inside"
+      >
+        <ModalOverlay />
+        <ModalContent
+          bg={colorMode === "dark" ? "gray.800" : "white"}
+          m={{ base: 0, md: "auto" }}
+          borderRadius={{ base: 0, md: "md" }}
+          maxH={{ base: "100dvh", md: "auto" }}
+          mx={{ base: 0, md: 4 }}
         >
-          <ModalOverlay />
-          <ModalContent
-            bg={colorMode === "dark" ? "gray.800" : "white"}
-            mx={4}
-          >
-            <ModalHeader color={colorMode === "dark" ? "white" : "gray.800"}>
-              Buat Payroll
-            </ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
-              <VStack align="stretch" spacing={4}>
-                <Text
-                  fontSize="sm"
-                  color={colorMode === "dark" ? "gray.300" : "gray.600"}
+          <ModalHeader color={colorMode === "dark" ? "white" : "gray.800"}>
+            Buat Payroll
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing={4}>
+              <Text
+                fontSize="sm"
+                color={colorMode === "dark" ? "gray.300" : "gray.600"}
+              >
+                {selectedPegawaiIds.length} pegawai dipilih. Payroll akan dibuat
+                dan slip gaji (.docx) akan diunduh otomatis.
+              </Text>
+              <FormControl isRequired>
+                <FormLabel
+                  color={colorMode === "dark" ? "gray.300" : "gray.700"}
                 >
-                  {selectedPegawaiIds.length} pegawai dipilih. Payroll akan
-                  dibuat dan slip gaji (.docx) akan diunduh otomatis.
-                </Text>
-                <FormControl isRequired>
-                  <FormLabel
-                    color={colorMode === "dark" ? "gray.300" : "gray.700"}
-                  >
-                    Tanggal Awal
-                  </FormLabel>
-                  <Input
-                    type="date"
-                    value={tanggalAwal}
-                    onChange={(e) => setTanggalAwal(e.target.value)}
-                    bg={colorMode === "dark" ? "gray.700" : "white"}
-                    color={colorMode === "dark" ? "white" : "gray.800"}
-                    borderColor={
-                      colorMode === "dark" ? "gray.600" : "gray.200"
-                    }
-                  />
-                </FormControl>
-                <FormControl isRequired>
-                  <FormLabel
-                    color={colorMode === "dark" ? "gray.300" : "gray.700"}
-                  >
-                    Tanggal Akhir
-                  </FormLabel>
-                  <Input
-                    type="date"
-                    value={tanggalAkhir}
-                    min={tanggalAwal || undefined}
-                    onChange={(e) => setTanggalAkhir(e.target.value)}
-                    bg={colorMode === "dark" ? "gray.700" : "white"}
-                    color={colorMode === "dark" ? "white" : "gray.800"}
-                    borderColor={
-                      colorMode === "dark" ? "gray.600" : "gray.200"
-                    }
-                  />
-                </FormControl>
-              </VStack>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                variant="ghost"
-                mr={3}
-                onClick={onTambahClose}
-                isDisabled={isSubmitting}
-              >
-                Batal
-              </Button>
-              <Button
-                variant="primary"
-                isLoading={isSubmitting}
-                onClick={handleSubmitPayroll}
-              >
-                Simpan
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
-        <Modal
-          isOpen={isSlipGajiOpen}
-          onClose={onSlipGajiClose}
-          isCentered
+                  Tanggal Awal
+                </FormLabel>
+                <Input
+                  type="date"
+                  value={tanggalAwal}
+                  onChange={(e) => setTanggalAwal(e.target.value)}
+                  bg={colorMode === "dark" ? "gray.700" : "white"}
+                  color={colorMode === "dark" ? "white" : "gray.800"}
+                  borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+                />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel
+                  color={colorMode === "dark" ? "gray.300" : "gray.700"}
+                >
+                  Tanggal Akhir
+                </FormLabel>
+                <Input
+                  type="date"
+                  value={tanggalAkhir}
+                  min={tanggalAwal || undefined}
+                  onChange={(e) => setTanggalAkhir(e.target.value)}
+                  bg={colorMode === "dark" ? "gray.700" : "white"}
+                  color={colorMode === "dark" ? "white" : "gray.800"}
+                  borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter
+            flexDirection={{ base: "column-reverse", sm: "row" }}
+            gap={{ base: 2, sm: 0 }}
+          >
+            <Button
+              variant="ghost"
+              mr={{ base: 0, sm: 3 }}
+              onClick={onTambahClose}
+              isDisabled={isSubmitting}
+              w={{ base: "100%", sm: "auto" }}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="primary"
+              isLoading={isSubmitting}
+              onClick={handleSubmitPayroll}
+              w={{ base: "100%", sm: "auto" }}
+            >
+              Simpan
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      <Modal
+        isOpen={isSlipGajiOpen}
+        onClose={onSlipGajiClose}
+        isCentered={!isMobile}
+        size={{ base: "full", md: "md" }}
+        scrollBehavior="inside"
+      >
+        <ModalOverlay />
+        <ModalContent
+          bg={colorMode === "dark" ? "gray.800" : "white"}
+          m={{ base: 0, md: "auto" }}
+          borderRadius={{ base: 0, md: "md" }}
+          maxH={{ base: "100dvh", md: "auto" }}
+          mx={{ base: 0, md: 4 }}
         >
-          <ModalOverlay />
-          <ModalContent
-            bg={colorMode === "dark" ? "gray.800" : "white"}
-            mx={4}
-          >
-            <ModalHeader color={colorMode === "dark" ? "white" : "gray.800"}>
-              Generate Slip Gaji
-            </ModalHeader>
-            <ModalCloseButton />
-            <ModalBody>
-              <VStack align="stretch" spacing={4}>
-                <Text
-                  fontSize="sm"
-                  color={colorMode === "dark" ? "gray.300" : "gray.600"}
+          <ModalHeader color={colorMode === "dark" ? "white" : "gray.800"}>
+            Generate Slip Gaji
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing={4}>
+              <Text
+                fontSize="sm"
+                color={colorMode === "dark" ? "gray.300" : "gray.600"}
+              >
+                {selectedPegawaiIds.length} pegawai dipilih
+              </Text>
+              <FormControl isRequired>
+                <FormLabel
+                  color={colorMode === "dark" ? "gray.300" : "gray.700"}
                 >
-                  {selectedPegawaiIds.length} pegawai dipilih
-                </Text>
-                <FormControl isRequired>
-                  <FormLabel
-                    color={colorMode === "dark" ? "gray.300" : "gray.700"}
-                  >
-                    Tanggal Awal
-                  </FormLabel>
-                  <Input
-                    type="date"
-                    value={tanggalAwalSlip}
-                    onChange={(e) => setTanggalAwalSlip(e.target.value)}
-                    bg={colorMode === "dark" ? "gray.700" : "white"}
-                    color={colorMode === "dark" ? "white" : "gray.800"}
-                    borderColor={
-                      colorMode === "dark" ? "gray.600" : "gray.200"
-                    }
-                  />
-                </FormControl>
-                <FormControl isRequired>
-                  <FormLabel
-                    color={colorMode === "dark" ? "gray.300" : "gray.700"}
-                  >
-                    Tanggal Akhir
-                  </FormLabel>
-                  <Input
-                    type="date"
-                    value={tanggalAkhirSlip}
-                    min={tanggalAwalSlip || undefined}
-                    onChange={(e) => setTanggalAkhirSlip(e.target.value)}
-                    bg={colorMode === "dark" ? "gray.700" : "white"}
-                    color={colorMode === "dark" ? "white" : "gray.800"}
-                    borderColor={
-                      colorMode === "dark" ? "gray.600" : "gray.200"
-                    }
-                  />
-                </FormControl>
-              </VStack>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                variant="ghost"
-                mr={3}
-                onClick={onSlipGajiClose}
-                isDisabled={isSubmittingSlip}
-              >
-                Batal
-              </Button>
-              <Button
-                variant="primary"
-                isLoading={isSubmittingSlip}
-                onClick={handleSubmitSlipGaji}
-              >
-                Generate
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+                  Tanggal Awal
+                </FormLabel>
+                <Input
+                  type="date"
+                  value={tanggalAwalSlip}
+                  onChange={(e) => setTanggalAwalSlip(e.target.value)}
+                  bg={colorMode === "dark" ? "gray.700" : "white"}
+                  color={colorMode === "dark" ? "white" : "gray.800"}
+                  borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+                />
+              </FormControl>
+              <FormControl isRequired>
+                <FormLabel
+                  color={colorMode === "dark" ? "gray.300" : "gray.700"}
+                >
+                  Tanggal Akhir
+                </FormLabel>
+                <Input
+                  type="date"
+                  value={tanggalAkhirSlip}
+                  min={tanggalAwalSlip || undefined}
+                  onChange={(e) => setTanggalAkhirSlip(e.target.value)}
+                  bg={colorMode === "dark" ? "gray.700" : "white"}
+                  color={colorMode === "dark" ? "white" : "gray.800"}
+                  borderColor={colorMode === "dark" ? "gray.600" : "gray.200"}
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter
+            flexDirection={{ base: "column-reverse", sm: "row" }}
+            gap={{ base: 2, sm: 0 }}
+          >
+            <Button
+              variant="ghost"
+              mr={{ base: 0, sm: 3 }}
+              onClick={onSlipGajiClose}
+              isDisabled={isSubmittingSlip}
+              w={{ base: "100%", sm: "auto" }}
+            >
+              Batal
+            </Button>
+            <Button
+              variant="primary"
+              isLoading={isSubmittingSlip}
+              onClick={handleSubmitSlipGaji}
+              w={{ base: "100%", sm: "auto" }}
+            >
+              Generate
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </LayoutPegawai>
   );
 }
