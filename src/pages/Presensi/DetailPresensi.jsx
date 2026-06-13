@@ -183,12 +183,17 @@ function DetailPresensi() {
         jamPulang: formatJamInput(presensi?.jamPulang),
         statusPresensiId: getStatusPresensiId(presensi),
         lemburHarian: formatLemburHarianInput(presensi?.lemburHarian),
+        unitKerjaId:
+          presensi?.unitKerjaId ?? presensi?.daftarUnitKerja?.id ?? "",
       };
     });
     return initialForm;
   };
 
-  const handleMulaiEdit = (pegawaiId) => {
+  const handleMulaiEdit = async (pegawaiId) => {
+    if (unitKerjaList.length === 0) {
+      await fetchUnitKerja();
+    }
     setEditingByPegawai((prev) => ({ ...prev, [pegawaiId]: true }));
   };
 
@@ -307,6 +312,8 @@ function DetailPresensi() {
         jamPulang: formatJamInput(presensi?.jamPulang),
         statusPresensiId: getStatusPresensiId(presensi),
         lemburHarian: formatLemburHarianInput(presensi?.lemburHarian),
+        unitKerjaId:
+          presensi?.unitKerjaId ?? presensi?.daftarUnitKerja?.id ?? "",
       },
     }));
     setEditingByPegawai((prev) => ({ ...prev, [pegawaiId]: false }));
@@ -327,8 +334,9 @@ function DetailPresensi() {
       form.lemburHarian !== "" && form.lemburHarian != null
         ? Math.round(Number(form.lemburHarian))
         : null;
-    const unitKerjaId =
-      presensi?.unitKerjaId ?? presensi?.daftarUnitKerja?.id ?? null;
+    const unitKerjaId = form.unitKerjaId
+      ? Number(form.unitKerjaId)
+      : presensi?.unitKerjaId ?? presensi?.daftarUnitKerja?.id ?? null;
 
     if (
       !jamMasukDate &&
@@ -692,7 +700,28 @@ function DetailPresensi() {
   const renderPegawaiFields = (pegawai, ctx) => {
     const { presensi, isInputEnabled, statusLabel, formStatusId } = ctx;
 
+    const formUnitKerjaId = formByPegawai[pegawai?.id]?.unitKerjaId ?? "";
+
     return {
+      unitKerja: isInputEnabled ? (
+        <Select
+          size="sm"
+          placeholder={loadingUnitKerja ? "Memuat..." : "Pilih unit kerja"}
+          value={formUnitKerjaId}
+          onChange={(e) =>
+            handleChangeJam(pegawai?.id, "unitKerjaId", e.target.value)
+          }
+          isDisabled={loadingUnitKerja}
+        >
+          {unitKerjaList.map((uk) => (
+            <option key={uk.id} value={uk.id}>
+              {uk.unitKerja || uk.kode || `Unit ${uk.id}`}
+            </option>
+          ))}
+        </Select>
+      ) : (
+        getUnitKerjaLabel(presensi)
+      ),
       jamMasuk: isInputEnabled ? (
         <Input
           size="sm"
@@ -858,9 +887,7 @@ function DetailPresensi() {
 
         <CardBody pt={4}>
           <VStack align="stretch" spacing={3}>
-            <CardField label="Unit Kerja">
-              {getUnitKerjaLabel(presensi)}
-            </CardField>
+            <CardField label="Unit Kerja">{fields.unitKerja}</CardField>
 
             <SimpleGrid columns={2} spacing={3}>
               <CardField label="Jam Masuk">{fields.jamMasuk}</CardField>
@@ -1090,7 +1117,7 @@ function DetailPresensi() {
                           {pegawai?.namaPegawai || pegawai?.nama || "-"}
                         </Td>
                         <Td whiteSpace="nowrap">{pegawai?.jabatan || "-"}</Td>
-                        <Td>{getUnitKerjaLabel(presensi)}</Td>
+                        <Td>{fields.unitKerja}</Td>
                         <Td whiteSpace="nowrap">{fields.jamMasuk}</Td>
                         <Td whiteSpace="nowrap">{fields.jamPulang}</Td>
                         <Td whiteSpace="nowrap">

@@ -27,34 +27,47 @@ import {
   useColorMode,
   useDisclosure,
   Textarea,
+  Spacer,
 } from "@chakra-ui/react";
 import { Select as Select2 } from "chakra-react-select";
+import { BsTrash } from "react-icons/bs";
 import { useSelector } from "react-redux";
 import { userRedux } from "../../Redux/Reducers/auth";
+
+const FILTER_ALL = "all";
 
 function MutasiPersediaan() {
   const [mutasiList, setMutasiList] = useState([]);
   const [stokList, setStokList] = useState([]);
   const [unitKerjaList, setUnitKerjaList] = useState([]);
+  const [filterUnitKerjaId, setFilterUnitKerjaId] = useState(null);
   const [selectedStok, setSelectedStok] = useState(null);
   const [unitKerjaTujuanId, setUnitKerjaTujuanId] = useState(null);
   const [jumlah, setJumlah] = useState("");
   const [tanggal, setTanggal] = useState("");
   const [keterangan, setKeterangan] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mutasiToCancel, setMutasiToCancel] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const user = useSelector(userRedux);
-  const unitKerjaId = user[0]?.unitKerja_profile?.id;
+  const userUnitKerjaId = user[0]?.unitKerja_profile?.id;
   const toast = useToast();
   const { colorMode } = useColorMode();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isCancelOpen,
+    onOpen: onCancelOpen,
+    onClose: onCancelClose,
+  } = useDisclosure();
 
-  const fetchMutasiList = async () => {
-    if (!unitKerjaId) return;
+  const fetchMutasiList = async (unitKerjaIdParam) => {
+    const id = unitKerjaIdParam ?? filterUnitKerjaId;
+    if (!id) return;
     setLoading(true);
     try {
       const res = await axios.get(
-        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/mutasi-persediaan/get/list/${unitKerjaId}`
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/mutasi-persediaan/get/list/${id}`
       );
       setMutasiList(res.data.result || []);
     } catch (err) {
@@ -111,9 +124,17 @@ function MutasiPersediaan() {
   };
 
   useEffect(() => {
-    fetchMutasiList();
     fetchUnitKerjaList();
-  }, [unitKerjaId]);
+    if (userUnitKerjaId) {
+      setFilterUnitKerjaId(userUnitKerjaId);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (filterUnitKerjaId) {
+      fetchMutasiList(filterUnitKerjaId);
+    }
+  }, [filterUnitKerjaId]);
 
   const handleOpenModal = () => {
     resetForm();
@@ -185,8 +206,55 @@ function MutasiPersediaan() {
     }
   };
 
+  const openCancelModal = (mutasi) => {
+    setMutasiToCancel(mutasi);
+    onCancelOpen();
+  };
+
+  const handleCloseCancelModal = () => {
+    onCancelClose();
+    setMutasiToCancel(null);
+  };
+
+  const handleBatalkanMutasi = async () => {
+    if (!mutasiToCancel?.id) return;
+
+    setCancelling(true);
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/mutasi-persediaan/delete/${mutasiToCancel.id}`
+      );
+      toast({
+        title: "Berhasil",
+        description:
+          "Mutasi dibatalkan. Stok unit asal dan tujuan telah dikembalikan.",
+        status: "success",
+        duration: 4000,
+        isClosable: true,
+      });
+      handleCloseCancelModal();
+      fetchMutasiList();
+    } catch (err) {
+      toast({
+        title: "Error",
+        description:
+          err.response?.data?.message || "Gagal membatalkan mutasi",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const formatDate = (d) =>
     d ? new Date(d).toLocaleDateString("id-ID") : "-";
+
+  const getMutasiBarangNama = (m) =>
+    m.stokMasukAsal?.persediaan?.nama ||
+    m.stokMasukTujuan?.persediaan?.nama ||
+    "-";
 
   const getUnitKerjaLabel = (stok) =>
     stok?.daftarUnitKerja?.unitKerja ||
@@ -209,6 +277,17 @@ function MutasiPersediaan() {
       label: u.unitKerja || u.kode,
     }));
 
+  const unitKerjaFilterOptions = [
+    { value: FILTER_ALL, label: "Semua Unit Kerja" },
+    ...(unitKerjaList?.map((val) => ({
+      value: val.id,
+      label: val.unitKerja || val.kode,
+    })) || []),
+  ];
+
+  const showArahColumn = filterUnitKerjaId !== FILTER_ALL;
+  const colSpan = (showArahColumn ? 7 : 6) + 1;
+
   return (
     <LayoutAset>
       <Box bgColor="secondary" pb="40px" px="30px">
@@ -218,11 +297,44 @@ function MutasiPersediaan() {
           bg={colorMode === "dark" ? "gray.800" : "white"}
           style={{ overflowX: "auto" }}
         >
-          <HStack mb="30px">
+          <HStack mb="30px" gap={4} align="flex-end" flexWrap="wrap">
             <Text fontSize="lg" fontWeight="bold">
               Mutasi Persediaan
             </Text>
-            <Box flex={1} />
+            <Spacer />
+            <FormControl maxW="280px">
+              <FormLabel fontSize="sm">Filter Unit Kerja</FormLabel>
+              <Select2
+                options={unitKerjaFilterOptions}
+                placeholder="Pilih unit kerja"
+                value={
+                  filterUnitKerjaId
+                    ? unitKerjaFilterOptions.find(
+                        (opt) => opt.value === filterUnitKerjaId
+                      ) || null
+                    : null
+                }
+                onChange={(selectedOption) => {
+                  setFilterUnitKerjaId(selectedOption?.value || null);
+                }}
+                components={{
+                  DropdownIndicator: () => null,
+                  IndicatorSeparator: () => null,
+                }}
+                chakraStyles={{
+                  container: (provided) => ({
+                    ...provided,
+                    borderRadius: "6px",
+                  }),
+                  control: (provided) => ({
+                    ...provided,
+                    backgroundColor: "terang",
+                    border: "0px",
+                    minHeight: "40px",
+                  }),
+                }}
+              />
+            </FormControl>
             <Button variant="primary" onClick={handleOpenModal}>
               Mutasi Baru +
             </Button>
@@ -237,43 +349,56 @@ function MutasiPersediaan() {
                 <Th>Unit Asal</Th>
                 <Th>Unit Tujuan</Th>
                 <Th>Status</Th>
-                <Th>Arah</Th>
+                {showArahColumn && <Th>Arah</Th>}
+                <Th>Aksi</Th>
               </Tr>
             </Thead>
             <Tbody>
               {loading ? (
                 <Tr>
-                  <Td colSpan={7} textAlign="center">
+                  <Td colSpan={colSpan} textAlign="center">
                     Memuat...
                   </Td>
                 </Tr>
               ) : mutasiList.length === 0 ? (
                 <Tr>
-                  <Td colSpan={7} textAlign="center">
+                  <Td colSpan={colSpan} textAlign="center">
                     Belum ada mutasi
                   </Td>
                 </Tr>
               ) : (
                 mutasiList.map((m) => {
-                  const isAsal = Number(m.unitKerjaAsalId) === Number(unitKerjaId);
+                  const isAsal =
+                    Number(m.unitKerjaAsalId) === Number(filterUnitKerjaId);
                   return (
                     <Tr key={m.id}>
                       <Td>{formatDate(m.tanggal)}</Td>
-                      <Td>
-                        {m.stokMasukAsal?.persediaan?.nama ||
-                          m.stokMasukTujuan?.persediaan?.nama ||
-                          "-"}
-                      </Td>
+                      <Td>{getMutasiBarangNama(m)}</Td>
                       <Td isNumeric>{m.jumlah}</Td>
                       <Td>{m.unitKerjaAsal?.unitKerja || "-"}</Td>
                       <Td>{m.unitKerjaTujuan?.unitKerja || "-"}</Td>
                       <Td>
                         <Badge colorScheme="green">{m.status}</Badge>
                       </Td>
+                      {showArahColumn && (
+                        <Td>
+                          <Badge colorScheme={isAsal ? "orange" : "blue"}>
+                            {isAsal ? "Keluar" : "Masuk"}
+                          </Badge>
+                        </Td>
+                      )}
                       <Td>
-                        <Badge colorScheme={isAsal ? "orange" : "blue"}>
-                          {isAsal ? "Keluar" : "Masuk"}
-                        </Badge>
+                        {m.status === "selesai" && (
+                          <Button
+                            size="sm"
+                            colorScheme="red"
+                            variant="outline"
+                            leftIcon={<BsTrash />}
+                            onClick={() => openCancelModal(m)}
+                          >
+                            Batalkan
+                          </Button>
+                        )}
                       </Td>
                     </Tr>
                   );
@@ -283,6 +408,74 @@ function MutasiPersediaan() {
           </Table>
         </Box>
       </Box>
+
+      <Modal
+        isOpen={isCancelOpen}
+        onClose={handleCloseCancelModal}
+        isCentered
+        size="md"
+      >
+        <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(2px)" />
+        <ModalContent
+          mx={4}
+          bg={colorMode === "dark" ? "gray.800" : "white"}
+          borderRadius="10px"
+        >
+          <ModalHeader color={colorMode === "dark" ? "white" : "gray.700"}>
+            Batalkan Mutasi
+          </ModalHeader>
+          <ModalCloseButton
+            color={colorMode === "dark" ? "white" : "gray.700"}
+          />
+          <ModalBody>
+            <Text color={colorMode === "dark" ? "gray.300" : "gray.600"}>
+              Mutasi ini akan dihapus dan stok dikembalikan seperti sebelum
+              mutasi dilakukan. Stok keluar di unit asal dihapus, stok masuk di
+              unit tujuan dihapus.
+            </Text>
+            {mutasiToCancel && (
+              <Box
+                mt={4}
+                p={4}
+                borderRadius="8px"
+                bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+              >
+                <Text fontSize="sm" color="gray.500">
+                  Barang
+                </Text>
+                <Text fontWeight="semibold" mb={2}>
+                  {getMutasiBarangNama(mutasiToCancel)}
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  Unit Asal → Tujuan
+                </Text>
+                <Text fontWeight="semibold" mb={2}>
+                  {mutasiToCancel.unitKerjaAsal?.unitKerja || "-"} →{" "}
+                  {mutasiToCancel.unitKerjaTujuan?.unitKerja || "-"}
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  Jumlah
+                </Text>
+                <Text fontWeight="semibold" color="red.500">
+                  {mutasiToCancel.jumlah}
+                </Text>
+              </Box>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={handleCloseCancelModal}>
+              Tutup
+            </Button>
+            <Button
+              colorScheme="red"
+              onClick={handleBatalkanMutasi}
+              isLoading={cancelling}
+            >
+              Ya, Batalkan Mutasi
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
 
       <Modal isOpen={isOpen} onClose={onClose} size="xl">
         <ModalOverlay />
