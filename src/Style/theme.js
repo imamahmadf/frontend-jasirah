@@ -36,6 +36,7 @@ export const myNewTheme = extendTheme({
     pegawai: "rgba(185, 28, 28, 1)", // Merah profesional (Red-700) - Lebih dalam dan elegan
     pegawaiGelap: "rgba(153, 27, 27, 1)", // Merah gelap (Red-800) - Untuk hover dan accent
     perencanaan: "rgba(235, 106, 63,1)",
+    kpbpn: "rgb(89.02% 35.29% 6.27%)",
   },
 
   config: {

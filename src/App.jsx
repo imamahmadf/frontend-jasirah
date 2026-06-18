@@ -147,6 +147,15 @@ import DaftarPengeluaran from "./pages/Pengeluaran/DaftarPengeluaran.jsx";
 import DashboardPengeluaran from "./pages/Pengeluaran/DashboardPengeluaran.jsx";
 import DetailPengeluaran from "./pages/Pengeluaran/DetailPengeluaran.jsx";
 
+///////////KPBPN//////////////////////
+
+import DaftarMitra from "./pages/MitraKPBPN/DaftarMitra.jsx";
+import SuratJalan from "./pages/PengirimanAdminKPBPN/SuratJalan.jsx";
+import SuratJalanMitra from "./pages/PengirimanMitraKPBPN/SuratJalanMitra.jsx";
+import PengisianTanki from "./pages/Tanki/PengisianTanki.jsx";
+import TambahPengisianTanki from "./pages/Tanki/TambahPengisianTanki.jsx";
+import DaftarTanki from "./pages/Tanki/DaftarTanki.jsx";
+
 function App() {
   const dispatch = useDispatch();
 
@@ -872,6 +881,49 @@ function App() {
           <ProtectedRoute
             component={DetailPengeluaran}
             path="/pengeluaran/detail-pengeluaran/:id"
+            exact
+            roleRoute={[5, 1]}
+          />
+
+          {/* /////////KPBPN/////////////// */}
+
+          <ProtectedRoute
+            component={DaftarMitra}
+            path="/mitra-kpbpn/daftar"
+            exact
+            roleRoute={[5, 1]}
+          />
+
+          <ProtectedRoute
+            component={SuratJalan}
+            path="/pengiriman-kpbpn/surat-jalan"
+            exact
+            roleRoute={[5, 1]}
+          />
+
+          <ProtectedRoute
+            component={SuratJalanMitra}
+            path="/pengiriman-mitra/surat-jalan"
+            exact
+            roleRoute={[5, 1]}
+          />
+
+          <ProtectedRoute
+            component={PengisianTanki}
+            path="/tanki-kpbpn/pengisian"
+            exact
+            roleRoute={[5, 1]}
+          />
+
+          <ProtectedRoute
+            component={TambahPengisianTanki}
+            path="/tanki-kpbpn/tambah-pengisian"
+            exact
+            roleRoute={[5, 1]}
+          />
+          <ProtectedRoute
+            component={DaftarTanki}
+            path="/tanki-kpbpn/daftar-tanki"
             exact
             roleRoute={[5, 1]}
           />
