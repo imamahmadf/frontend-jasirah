@@ -129,14 +129,30 @@ const PengisianTanki = () => {
 
     setIsSubmittingBA(true);
     try {
-      await axios.post(`${API_BASE}/tanki/post/ba-penerimaan`, {
-        tanggal: baTanggal,
-        ids: selectedIds,
-      });
+      const res = await axios.post(
+        `${API_BASE}/tanki/post/ba-penerimaan`,
+        {
+          tanggal: baTanggal,
+          ids: selectedIds,
+        },
+        { responseType: "blob" },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `BA_Penerimaan_${baTanggal}_${Date.now()}.docx`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
 
       toast({
         title: "Berhasil",
-        description: "BA Penerimaan berhasil dibuat",
+        description: "BA Penerimaan berhasil dibuat dan diunduh",
         status: "success",
         duration: 4000,
         isClosable: true,
@@ -147,12 +163,22 @@ const PengisianTanki = () => {
       fetchDataPengisianTanki();
     } catch (err) {
       console.error(err);
+      let message = "Gagal membuat BA Penerimaan";
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          message = parsed.message || message;
+        } catch {
+          // gunakan pesan default
+        }
+      } else if (err.response?.data?.message) {
+        message = err.response.data.message;
+      }
+
       toast({
         title: "Gagal",
-        description:
-          err.response?.data?.message ||
-          err.message ||
-          "Gagal membuat BA Penerimaan",
+        description: message,
         status: "error",
         duration: 4000,
         isClosable: true,
@@ -191,6 +217,8 @@ const PengisianTanki = () => {
         duration: 3000,
         isClosable: true,
       });
+
+      fetchDataPengisianTanki();
     } catch (err) {
       console.error(err);
       let message = "Gagal mencetak dokumen BAST";
@@ -222,14 +250,14 @@ const PengisianTanki = () => {
     fetchDataPengisianTanki();
   }, [page]);
 
-  const colSpan = isSelectMode ? 16 : 15;
+  const colSpan = isSelectMode ? 17 : 16;
 
   return (
     <LayoutKPBPN>
       <Box bgColor="secondary" pb="40px" px="30px" minH="90vh">
         <Container variant="primary" p="30px" my="30px" minW="2000px">
           <HStack justify="space-between" mb={6}>
-            <Heading color="kpbpn">Pengisian Tanki</Heading>
+            <Heading color="kpbpn">Unloading truck - tanki </Heading>
             <HStack spacing={3}>
               <Text fontSize="sm" color="gray.500">
                 Total: {totalRows} data
@@ -262,7 +290,7 @@ const PengisianTanki = () => {
                 variant="primary"
                 onClick={() => history.push("/tanki-kpbpn/tambah-pengisian")}
               >
-                + Tambah Pengisian
+                + Tambah Unloading
               </Button>
             </HStack>
           </HStack>
@@ -290,6 +318,7 @@ const PengisianTanki = () => {
                     <Th>Catatan</Th>
                     <Th>Saksi</Th>
                     <Th>Konfirmasi Penerimaan</Th>
+                    <Th>Nomor Surat BAST</Th>
                     <Th>BA Penerimaan</Th>
                     <Th>Aksi</Th>
                   </Tr>
@@ -356,6 +385,15 @@ const PengisianTanki = () => {
                                   </Badge>
                                 ))}
                               </Box>
+                            )}
+                          </Td>
+                          <Td>
+                            {item.nomorSurat ? (
+                              <Text fontSize="xs" whiteSpace="nowrap">
+                                {item.nomorSurat}
+                              </Text>
+                            ) : (
+                              <Badge colorScheme="gray">Belum ada</Badge>
                             )}
                           </Td>
                           <Td>

@@ -45,7 +45,6 @@ import "../../Style/pagination.css";
 const API_BASE = import.meta.env.VITE_REACT_APP_API_BASE_URL;
 
 const konfirmasiSchema = Yup.object({
-  nomor: Yup.string().required("Nomor konfirmasi wajib diisi"),
   tanggal: Yup.string().required("Tanggal wajib diisi"),
   volume: Yup.number()
     .typeError("Volume harus angka")
@@ -56,7 +55,6 @@ const konfirmasiSchema = Yup.object({
 });
 
 const initialValuesKonfirmasi = {
-  nomor: "",
   tanggal: "",
   volume: "",
   pegawaiId: null,
@@ -238,7 +236,6 @@ const SuratJalan = () => {
 
     try {
       await axios.post(`${API_BASE}/pengiriman/post/konfirmasi`, {
-        nomor: values.nomor,
         suratJalanId: selectedSuratJalan.id,
         tanggal: values.tanggal,
         volume: values.volume,
@@ -731,19 +728,6 @@ const SuratJalan = () => {
               <Form>
                 <ModalBody>
                   <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                    <FormControl isInvalid={touched.nomor && errors.nomor}>
-                      <FormLabel>Nomor Konfirmasi</FormLabel>
-                      <Input
-                        name="nomor"
-                        bgColor="terang"
-                        value={values.nomor}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder="Contoh: KP-001/2026"
-                      />
-                      <FormErrorMessage>{errors.nomor}</FormErrorMessage>
-                    </FormControl>
-
                     <FormControl isInvalid={touched.tanggal && errors.tanggal}>
                       <FormLabel>Tanggal</FormLabel>
                       <Input
@@ -785,9 +769,7 @@ const SuratJalan = () => {
                             return (res.data.result || []).map((val) => ({
                               value: val.id,
                               label:
-                                val.nama ||
-                                val.name ||
-                                `Pegawai #${val.id}`,
+                                val.nama || val.name || `Pegawai #${val.id}`,
                             }));
                           } catch (err) {
                             console.error(

@@ -50,7 +50,7 @@ import LogoAset from "../assets/asetLogo.png";
 import LogoPegawai from "../assets/pegawaiLogo.png";
 import LogoPerencanaan from "../assets/perencanaanLogo.png";
 import LogoUtama from "../assets/logo JDB.png";
-import FotoTangki from "../assets/fototanki.jpg";
+import FotoTangki from "../assets/fototanki.png";
 
 const Login = () => {
   const dispatch = useDispatch();

@@ -29,7 +29,7 @@ import {
 import Layout from "../Componets/Layout";
 import { useSelector } from "react-redux";
 import { selectIsAuthenticated, userRedux } from "../Redux/Reducers/auth";
-import FotoDinkes from "../assets/fototanki.jpg";
+import FotoDinkes from "../assets/fototanki.png";
 import { getSEOConfig } from "../config/seoConfig";
 import { useHistory } from "react-router-dom";
 import axios from "axios";
@@ -544,14 +544,14 @@ function Home() {
                 <Text
                   color="white"
                   fontWeight={900}
-                  fontSize={{ base: "3rem", md: "5rem", lg: "6rem" }}
+                  fontSize={{ base: "1rem", md: "5rem", lg: "4rem" }}
                   lineHeight="1.2"
                   bgGradient="linear-gradient(90deg, #fff 0%, #cbfaea 100%)"
                   bgClip="text"
                   textShadow="2px 4px 8px rgba(0,0,0,0.3)"
                   letterSpacing="wide"
                 >
-                  JASIRAH CORE
+                  KOPERASI PRODUSEN BATANGHARI PATRA NUSANTARA
                 </Text>
               </Box>
 
@@ -563,9 +563,9 @@ function Home() {
                   lineHeight="1.8"
                   textShadow="1px 2px 4px rgba(0,0,0,0.3)"
                 >
-                  Sistem Informasi Terintegrasi untuk Pengelolaan Surat
+                  {/* Sistem Informasi Terintegrasi untuk Pengelolaan Surat
                   Perjalanan Dinas, Kepegawaian, dan Administrasi PT. Jasirah
-                  Diza Berjaya
+                  Diza Berjaya */}
                 </Text>
               </Box>
 

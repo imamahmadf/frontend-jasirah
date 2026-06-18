@@ -43,7 +43,6 @@ import "../../Style/pagination.css";
 const API_BASE = import.meta.env.VITE_REACT_APP_API_BASE_URL;
 
 const suratJalanSchema = Yup.object({
-  nomor: Yup.string().required("Nomor surat jalan wajib diisi"),
   tanggal: Yup.string().required("Tanggal wajib diisi"),
   mitraId: Yup.mixed().nullable().required("Mitra wajib dipilih"),
   transportirId: Yup.mixed().nullable().required("Transportir wajib dipilih"),
@@ -58,7 +57,6 @@ const suratJalanSchema = Yup.object({
 });
 
 const initialValuesTambah = {
-  nomor: "",
   tanggal: "",
   mitraId: null,
   transportirId: null,
@@ -372,7 +370,7 @@ const SuratJalanMitra = () => {
   return (
     <LayoutKPBPN>
       <Box bgColor="secondary" pb="40px" px="30px" minH="90vh">
-        <Container variant="primary" p="30px" my="30px" minW="1000px">
+        <Container variant="primary" p="30px" my="30px" minW="2000px">
           <Flex align="center" mb={6}>
             <VStack align="start" spacing={1}>
               <Heading color="kpbpn">Daftar Surat Jalan</Heading>
@@ -733,18 +731,6 @@ const SuratJalanMitra = () => {
               <Form>
                 <ModalBody>
                   <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-                    <FormControl isInvalid={touched.nomor && errors.nomor}>
-                      <FormLabel>Nomor Surat Jalan</FormLabel>
-                      <Input
-                        name="nomor"
-                        bgColor="terang"
-                        value={values.nomor}
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                        placeholder="Contoh: SJ-001/2026"
-                      />
-                      <FormErrorMessage>{errors.nomor}</FormErrorMessage>
-                    </FormControl>
                     <FormControl isInvalid={touched.tanggal && errors.tanggal}>
                       <FormLabel>Tanggal</FormLabel>
                       <Input
@@ -907,27 +893,26 @@ const SuratJalanMitra = () => {
                       <FormLabel>Jam Pergi</FormLabel>
                       <Input
                         name="jamPergi"
-                        type="time"
+                        type="datetime-local"
                         bgColor="terang"
                         value={values.jamPergi}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="Masukkan waktu kendaraan berangkat"
                       />
                       <FormErrorMessage>{errors.jamPergi}</FormErrorMessage>
-                    </FormControl>{" "}
+                    </FormControl>
+
                     <FormControl
                       isInvalid={touched.jamDatang && errors.jamDatang}
                     >
                       <FormLabel>Jam Datang</FormLabel>
                       <Input
                         name="jamDatang"
-                        type="time"
+                        type="datetime-local"
                         bgColor="terang"
                         value={values.jamDatang}
                         onChange={handleChange}
                         onBlur={handleBlur}
-                        placeholder="Masukkan waktu kendaraan berangkat"
                       />
                       <FormErrorMessage>{errors.jamDatang}</FormErrorMessage>
                     </FormControl>

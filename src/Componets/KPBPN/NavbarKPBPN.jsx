@@ -47,6 +47,7 @@ import LogoPena from "../../assets/penaLogo.png";
 import LogoAset from "../../assets/asetLogo.png";
 import LogoPegawai from "../../assets/pegawaiLogo.png";
 import LogoPerencanaan from "../../assets/perencanaanLogo.png";
+import { BsStack } from "react-icons/bs";
 import {
   selectIsAuthenticated,
   userRedux,
@@ -69,26 +70,22 @@ const menuData = [
   },
 
   {
-    title: "pengiriman",
+    title: "pengiriman KPBPN",
     icon: BiCar,
     pathPrefix: "/pengiriman-kpbpn",
-    items: [
-      { label: "Kendaraan Dinas", path: "/pengiriman-kpbpn/surat-jalan" },
-    ],
+    items: [{ label: "Surat jalan", path: "/pengiriman-kpbpn/surat-jalan" }],
   },
 
   {
-    title: "pengiriman saya",
+    title: "pengiriman Mitra",
     icon: BiCar,
     pathPrefix: "/pengiriman-mitra",
-    items: [
-      { label: "Kendaraan Dinas", path: "/pengiriman-mitra/surat-jalan" },
-    ],
+    items: [{ label: "Surat Jalan", path: "/pengiriman-mitra/surat-jalan" }],
   },
 
   {
     title: "tanki",
-    icon: BiCar,
+    icon: BsStack,
     pathPrefix: "/tanki-kpbpn",
     items: [
       { label: "Pengisian Tanki", path: "/tanki-kpbpn/pengisian" },

@@ -41,7 +41,14 @@ const API_BASE = import.meta.env.VITE_REACT_APP_API_BASE_URL;
 
 const getImageUrl = (path) => (path ? `${API_BASE}${path}` : null);
 
-const FileUploadField = ({ label, name, preview, onChange, error, touched }) => {
+const FileUploadField = ({
+  label,
+  name,
+  preview,
+  onChange,
+  error,
+  touched,
+}) => {
   const inputRef = useRef(null);
 
   return (
@@ -87,6 +94,7 @@ const DaftarMitra = () => {
   const toast = useToast();
   const [dataMitra, setDataMitra] = useState([]);
   const [dataTransportir, setDataTransportir] = useState([]);
+  const [dataJenisTransportir, setDataJenisTransportir] = useState([]);
   const [previewFoto, setPreviewFoto] = useState(null);
 
   const {
@@ -115,6 +123,7 @@ const DaftarMitra = () => {
       const res = await axios.get(`${API_BASE}/mitra/get`);
       setDataMitra(res.data.resultMitra || []);
       setDataTransportir(res.data.resultTransportir || []);
+      setDataJenisTransportir(res.data.resultJenisTransportir || []);
     } catch (err) {
       console.error(err);
       toast({
@@ -135,7 +144,7 @@ const DaftarMitra = () => {
     (mitra.supirs || []).map((supir) => ({
       ...supir,
       mitraNama: mitra.nama,
-    }))
+    })),
   );
 
   const showPreview = (path) => {
@@ -179,6 +188,9 @@ const DaftarMitra = () => {
       .typeError("Kapasitas harus angka")
       .positive("Kapasitas harus lebih dari 0")
       .required("Kapasitas wajib diisi"),
+    jenisTransportirId: Yup.string().required(
+      "Jenis transportir wajib dipilih",
+    ),
     pic: Yup.mixed().nullable(),
   });
 
@@ -271,6 +283,7 @@ const DaftarMitra = () => {
                     <Th>No</Th>
                     <Th>Plat Nomor</Th>
                     <Th>Kapasitas</Th>
+                    <Th>Jenis</Th>
                     <Th>Foto</Th>
                   </Tr>
                 </Thead>
@@ -287,6 +300,8 @@ const DaftarMitra = () => {
                         <Td>{index + 1}</Td>
                         <Td>{item.plat}</Td>
                         <Td>{item.kapasitas}</Td>
+
+                        <Td>{item?.jenisTransportir?.jenis}</Td>
                         <Td>
                           {item.foto ? (
                             <Image
@@ -441,7 +456,9 @@ const DaftarMitra = () => {
                           onChange={handleChange}
                           onBlur={handleBlur}
                         />
-                        <FormErrorMessage>{errors[field.name]}</FormErrorMessage>
+                        <FormErrorMessage>
+                          {errors[field.name]}
+                        </FormErrorMessage>
                       </FormControl>
                     ))}
                   </VStack>
@@ -471,18 +488,32 @@ const DaftarMitra = () => {
           <ModalHeader>Tambah Transportir</ModalHeader>
           <ModalCloseButton />
           <Formik
-            initialValues={{ plat: "", kapasitas: "", pic: null, picPreview: null }}
+            initialValues={{
+              plat: "",
+              kapasitas: "",
+              jenisTransportirId: "",
+              pic: null,
+              picPreview: null,
+            }}
             validationSchema={transportirSchema}
             onSubmit={async (values, { setSubmitting, resetForm }) => {
               try {
                 const formData = new FormData();
                 formData.append("plat", values.plat);
                 formData.append("kapasitas", values.kapasitas);
+                formData.append(
+                  "jenisTransportirId",
+                  values.jenisTransportirId,
+                );
                 if (values.pic) formData.append("pic", values.pic);
 
-                await axios.post(`${API_BASE}/mitra/post/transportir`, formData, {
-                  headers: { "Content-Type": "multipart/form-data" },
-                });
+                await axios.post(
+                  `${API_BASE}/mitra/post/transportir`,
+                  formData,
+                  {
+                    headers: { "Content-Type": "multipart/form-data" },
+                  },
+                );
                 showSuccess("Transportir berhasil ditambahkan");
                 resetForm();
                 onTransportirClose();
@@ -493,13 +524,7 @@ const DaftarMitra = () => {
               }
             }}
           >
-            {({
-              values,
-              errors,
-              touched,
-              setFieldValue,
-              isSubmitting,
-            }) => (
+            {({ values, errors, touched, setFieldValue, isSubmitting }) => (
               <Form>
                 <ModalBody>
                   <VStack spacing={4}>
@@ -526,6 +551,30 @@ const DaftarMitra = () => {
                       />
                       <FormErrorMessage>{errors.kapasitas}</FormErrorMessage>
                     </FormControl>
+                    <FormControl
+                      isInvalid={
+                        touched.jenisTransportirId && errors.jenisTransportirId
+                      }
+                    >
+                      <FormLabel>Jenis Transportir</FormLabel>
+                      <Select
+                        placeholder="Pilih jenis transportir"
+                        value={values.jenisTransportirId}
+                        onChange={(e) =>
+                          setFieldValue("jenisTransportirId", e.target.value)
+                        }
+                      >
+                        {dataJenisTransportir.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.jenis}
+                          </option>
+                        ))}
+                      </Select>
+                      <FormErrorMessage>
+                        {errors.jenisTransportirId}
+                      </FormErrorMessage>
+                    </FormControl>
+
                     <FileUploadField
                       label="Foto Kendaraan"
                       name="pic"
@@ -536,7 +585,7 @@ const DaftarMitra = () => {
                         setFieldValue("pic", file);
                         setFieldValue(
                           "picPreview",
-                          file ? URL.createObjectURL(file) : null
+                          file ? URL.createObjectURL(file) : null,
                         );
                       }}
                     />
@@ -599,13 +648,7 @@ const DaftarMitra = () => {
               }
             }}
           >
-            {({
-              values,
-              errors,
-              touched,
-              setFieldValue,
-              isSubmitting,
-            }) => (
+            {({ values, errors, touched, setFieldValue, isSubmitting }) => (
               <Form>
                 <ModalBody>
                   <VStack spacing={4}>
@@ -627,9 +670,7 @@ const DaftarMitra = () => {
                       />
                       <FormErrorMessage>{errors.nik}</FormErrorMessage>
                     </FormControl>
-                    <FormControl
-                      isInvalid={touched.mitraId && errors.mitraId}
-                    >
+                    <FormControl isInvalid={touched.mitraId && errors.mitraId}>
                       <FormLabel>Mitra</FormLabel>
                       <Select
                         placeholder="Pilih mitra"
@@ -656,7 +697,7 @@ const DaftarMitra = () => {
                         setFieldValue("ktp", file);
                         setFieldValue(
                           "ktpPreview",
-                          file ? URL.createObjectURL(file) : null
+                          file ? URL.createObjectURL(file) : null,
                         );
                       }}
                     />
@@ -670,7 +711,7 @@ const DaftarMitra = () => {
                         setFieldValue("foto", file);
                         setFieldValue(
                           "fotoPreview",
-                          file ? URL.createObjectURL(file) : null
+                          file ? URL.createObjectURL(file) : null,
                         );
                       }}
                     />
