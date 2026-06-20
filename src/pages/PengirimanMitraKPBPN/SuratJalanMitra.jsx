@@ -51,6 +51,7 @@ const suratJalanSchema = Yup.object({
     .typeError("Volume harus angka")
     .positive("Volume harus lebih dari 0")
     .required("Volume wajib diisi"),
+  satuanVolumeId: Yup.mixed().nullable().required("Satuan volume wajib dipilih"),
   supirId: Yup.mixed().nullable().required("Supir wajib dipilih"),
   jamDatang: Yup.string().required("Tanggal wajib diisi"),
   jamPergi: Yup.string().required("Tanggal wajib diisi"),
@@ -63,6 +64,7 @@ const initialValuesTambah = {
   unitKerjaId: null,
   unitKerjaLabel: "",
   volume: "",
+  satuanVolumeId: null,
   supirId: null,
   jamDatang: "",
   jamPergi: "",
@@ -92,6 +94,22 @@ const selectStyles = {
       color: state.isFocused ? "white" : "black",
     }),
   },
+};
+
+const formatTransportirLabel = (val) => {
+  if (!val) return "";
+  const satuan = val?.satuanVolume?.satuan;
+  const kapasitas = val?.kapasitas;
+  let label = val.plat || `Transportir #${val.id}`;
+  if (kapasitas) {
+    label += ` (${kapasitas}${satuan ? ` ${satuan}` : ""})`;
+  }
+  return label;
+};
+
+const formatVolumeLabel = (volume, satuan) => {
+  if (volume === null || volume === undefined || volume === "") return "-";
+  return satuan ? `${volume} ${satuan}` : String(volume);
 };
 
 const SuratJalanMitra = () => {
@@ -138,6 +156,17 @@ const SuratJalanMitra = () => {
           year: "numeric",
         })
       : "-";
+
+  const formatJam = (value) => {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
 
   const scrollToDataList = () => {
     dataListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -228,6 +257,7 @@ const SuratJalanMitra = () => {
         transportirId: values.transportirId,
         unitKerjaId: values.unitKerjaId,
         volume: values.volume,
+        satuanVolumeId: values.satuanVolumeId,
         supirId: values.supirId,
         jamDatang: values.jamDatang,
         jamPergi: values.jamPergi,
@@ -398,7 +428,7 @@ const SuratJalanMitra = () => {
                 <Select2
                   options={(dataSeed?.resultTransportir || []).map((val) => ({
                     value: val.id,
-                    label: val.plat || `Transportir #${val.id}`,
+                    label: formatTransportirLabel(val),
                   }))}
                   placeholder="Pilih Transportir"
                   onChange={(opt) => setTransportirFilterId(opt?.value || 0)}
@@ -593,6 +623,8 @@ const SuratJalanMitra = () => {
                       Volume
                     </Th>
                     <Th textTransform="capitalize">Supir</Th>
+                    <Th textTransform="capitalize">Jam Pergi</Th>
+                    <Th textTransform="capitalize">Jam Datang</Th>
                     <Th textTransform="capitalize">Status</Th>{" "}
                     <Th textTransform="capitalize">Aksi</Th>
                   </Tr>
@@ -601,7 +633,7 @@ const SuratJalanMitra = () => {
                   {isLoading ? (
                     Array.from({ length: 5 }).map((_, idx) => (
                       <Tr key={idx}>
-                        {Array.from({ length: 9 }).map((__, i) => (
+                        {Array.from({ length: 11 }).map((__, i) => (
                           <Td key={i}>
                             <Skeleton height="20px" />
                           </Td>
@@ -616,8 +648,15 @@ const SuratJalanMitra = () => {
                         <Td>{item.mitra?.nama || "-"}</Td>
                         <Td>{item.transportir?.plat || "-"}</Td>
                         <Td>{item.daftarUnitKerja?.unitKerja || "-"}</Td>
-                        <Td isNumeric>{item.volume ?? "-"}</Td>
+                        <Td isNumeric>
+                          {formatVolumeLabel(
+                            item.volume,
+                            item.satuanVolume?.satuan,
+                          )}
+                        </Td>
                         <Td>{item.supir?.nama || "-"}</Td>
+                        <Td>{formatJam(item.jamPergi)}</Td>
+                        <Td>{formatJam(item.jamDatang)}</Td>
                         <Td>
                           <Badge colorScheme="blue" variant="subtle">
                             {item.statusSuratJalan?.status || "-"}
@@ -642,7 +681,7 @@ const SuratJalanMitra = () => {
                     ))
                   ) : (
                     <Tr>
-                      <Td colSpan={9} textAlign="center" py={10}>
+                      <Td colSpan={11} textAlign="center" py={10}>
                         <VStack spacing={2}>
                           <Text fontSize="lg" color="gray.500">
                             Tidak ada data surat jalan
@@ -778,7 +817,7 @@ const SuratJalanMitra = () => {
                         options={(dataSeed?.resultTransportir || []).map(
                           (val) => ({
                             value: val.id,
-                            label: val.plat || `Transportir #${val.id}`,
+                            label: formatTransportirLabel(val),
                           }),
                         )}
                         placeholder="Pilih Transportir"
@@ -786,17 +825,26 @@ const SuratJalanMitra = () => {
                           values.transportirId
                             ? {
                                 value: values.transportirId,
-                                label:
+                                label: formatTransportirLabel(
                                   (dataSeed?.resultTransportir || []).find(
                                     (t) => t.id === values.transportirId,
-                                  )?.plat ||
-                                  `Transportir #${values.transportirId}`,
+                                  ),
+                                ),
                               }
                             : null
                         }
-                        onChange={(opt) =>
-                          setFieldValue("transportirId", opt?.value || null)
-                        }
+                        onChange={(opt) => {
+                          setFieldValue("transportirId", opt?.value || null);
+                          const selectedTransportir = (
+                            dataSeed?.resultTransportir || []
+                          ).find((t) => t.id === opt?.value);
+                          if (selectedTransportir?.satuanVolumeId) {
+                            setFieldValue(
+                              "satuanVolumeId",
+                              selectedTransportir.satuanVolumeId,
+                            );
+                          }
+                        }}
                         {...selectStyles}
                       />
                       <FormErrorMessage>
@@ -855,6 +903,41 @@ const SuratJalanMitra = () => {
                         placeholder="Masukkan volume"
                       />
                       <FormErrorMessage>{errors.volume}</FormErrorMessage>
+                    </FormControl>
+                    <FormControl
+                      isInvalid={
+                        touched.satuanVolumeId && errors.satuanVolumeId
+                      }
+                    >
+                      <FormLabel>Satuan Volume</FormLabel>
+                      <Select2
+                        options={(dataSeed?.resultSatuanVolume || []).map(
+                          (val) => ({
+                            value: val.id,
+                            label: val.satuan || `Satuan #${val.id}`,
+                          }),
+                        )}
+                        placeholder="Pilih satuan volume"
+                        value={
+                          values.satuanVolumeId
+                            ? {
+                                value: values.satuanVolumeId,
+                                label:
+                                  (dataSeed?.resultSatuanVolume || []).find(
+                                    (s) => s.id === values.satuanVolumeId,
+                                  )?.satuan ||
+                                  `Satuan #${values.satuanVolumeId}`,
+                              }
+                            : null
+                        }
+                        onChange={(opt) =>
+                          setFieldValue("satuanVolumeId", opt?.value || null)
+                        }
+                        {...selectStyles}
+                      />
+                      <FormErrorMessage>
+                        {errors.satuanVolumeId}
+                      </FormErrorMessage>
                     </FormControl>
                     <FormControl isInvalid={touched.supirId && errors.supirId}>
                       <FormLabel>Supir</FormLabel>

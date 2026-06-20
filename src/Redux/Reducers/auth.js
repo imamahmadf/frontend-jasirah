@@ -93,17 +93,28 @@ export const selectIsAuthenticated = (state) => !!state.auth.token;
 // Tambahkan selector untuk mengambil data user
 export const selectUser = (state) => state.auth.user; // Pastikan ini sesuai dengan struktur state Anda
 
+const AUTH_SKIP_REFRESH_PATHS = ["/user/login", "/user/register", "/user/refresh"];
+
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response.status === 401 && !originalRequest._retry) {
+    const isAuthRequest = AUTH_SKIP_REFRESH_PATHS.some((path) =>
+      originalRequest?.url?.includes(path)
+    );
+
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthRequest
+    ) {
       originalRequest._retry = true;
       try {
         const res = await axios.post(
           `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/user/refresh`,
           {},
-          { withCredentials: true } // Pastikan refresh token dikirim sebagai httpOnly cookie
+          { withCredentials: true }
         );
         localStorage.setItem("token", res.data.accessToken);
         axios.defaults.headers.common[
@@ -118,6 +129,7 @@ axios.interceptors.response.use(
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         window.location.href = "/login";
+        return Promise.reject(err);
       }
     }
     return Promise.reject(error);

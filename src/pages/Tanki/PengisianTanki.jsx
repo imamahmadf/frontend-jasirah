@@ -47,6 +47,11 @@ const formatDate = (date) => {
   });
 };
 
+const formatVolumeLabel = (volume, satuan) => {
+  if (volume === null || volume === undefined || volume === "") return "-";
+  return satuan ? `${volume} ${satuan}` : String(volume);
+};
+
 const PengisianTanki = () => {
   const history = useHistory();
   const toast = useToast();
@@ -54,9 +59,12 @@ const PengisianTanki = () => {
   const [dataPengisian, setDataPengisian] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingCetak, setLoadingCetak] = useState({});
+  const [loadingCetakBA, setLoadingCetakBA] = useState({});
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [baTanggal, setBaTanggal] = useState(getTodayInputDate());
+  const [baUkuranCairan, setBaUkuranCairan] = useState("");
+  const [baUkuranAir, setBaUkuranAir] = useState("");
   const [isSubmittingBA, setIsSubmittingBA] = useState(false);
   const [page, setPage] = useState(0);
   const [totalRows, setTotalRows] = useState(0);
@@ -113,6 +121,8 @@ const PengisianTanki = () => {
       return;
     }
     setBaTanggal(getTodayInputDate());
+    setBaUkuranCairan("");
+    setBaUkuranAir("");
     onOpen();
   };
 
@@ -133,6 +143,8 @@ const PengisianTanki = () => {
         `${API_BASE}/tanki/post/ba-penerimaan`,
         {
           tanggal: baTanggal,
+          ukuranCairan: baUkuranCairan !== "" ? Number(baUkuranCairan) : null,
+          ukuranAir: baUkuranAir !== "" ? Number(baUkuranAir) : null,
           ids: selectedIds,
         },
         { responseType: "blob" },
@@ -185,6 +197,65 @@ const PengisianTanki = () => {
       });
     } finally {
       setIsSubmittingBA(false);
+    }
+  };
+
+  const cetakUlangBAPenerimaan = async (item) => {
+    const baId = item.BAPenerimaanId;
+    if (!baId) return;
+
+    setLoadingCetakBA((prev) => ({ ...prev, [baId]: true }));
+
+    try {
+      const res = await axios.post(
+        `${API_BASE}/tanki/cetak/ba-penerimaan`,
+        { BAPenerimaanId: baId },
+        { responseType: "blob" },
+      );
+
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `BA_Penerimaan_${baId}_${Date.now()}.docx`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Berhasil",
+        description: "Dokumen BA Penerimaan berhasil diunduh",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (err) {
+      console.error(err);
+      let message = "Gagal mencetak ulang BA Penerimaan";
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          message = parsed.message || message;
+        } catch {
+          // gunakan pesan default
+        }
+      } else if (err.response?.data?.message) {
+        message = err.response.data.message;
+      }
+
+      toast({
+        title: "Gagal",
+        description: message,
+        status: "error",
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setLoadingCetakBA((prev) => ({ ...prev, [baId]: false }));
     }
   };
 
@@ -250,7 +321,7 @@ const PengisianTanki = () => {
     fetchDataPengisianTanki();
   }, [page]);
 
-  const colSpan = isSelectMode ? 17 : 16;
+  const colSpan = isSelectMode ? 19 : 18;
 
   return (
     <LayoutKPBPN>
@@ -315,6 +386,8 @@ const PengisianTanki = () => {
                     <Th>Warna</Th>
                     <Th>Kandungan Air</Th>
                     <Th>BSW</Th>
+                    <Th>Ukuran Cairan</Th>
+                    <Th>Ukuran Air</Th>
                     <Th>Catatan</Th>
                     <Th>Saksi</Th>
                     <Th>Konfirmasi Penerimaan</Th>
@@ -359,12 +432,24 @@ const PengisianTanki = () => {
                           <Td>{formatDate(item.tanggal || item.createdAt)}</Td>
                           <Td>{item.tanki?.kode || "-"}</Td>
                           <Td>{item.flowMeter ?? "-"}</Td>
-                          <Td>{item.gross ?? "-"}</Td>
-                          <Td>{item.net ?? "-"}</Td>
+                          <Td>
+                            {formatVolumeLabel(
+                              item.gross,
+                              item.satuanVolume?.satuan,
+                            )}
+                          </Td>
+                          <Td>
+                            {formatVolumeLabel(
+                              item.net,
+                              item.satuanVolume?.satuan,
+                            )}
+                          </Td>
                           <Td>{item.penampilanVisual || "-"}</Td>
                           <Td>{item.warna || "-"}</Td>
                           <Td>{item.kandunganAir ?? "-"}</Td>
                           <Td>{item.BSW ?? "-"}</Td>
+                          <Td>{item.BAPenerimaan?.ukuranCairan ?? "-"}</Td>
+                          <Td>{item.BAPenerimaan?.ukuranAir ?? "-"}</Td>
                           <Td>{item.catatan || "-"}</Td>
                           <Td>{item.saksi || "-"}</Td>
                           <Td>
@@ -406,15 +491,28 @@ const PengisianTanki = () => {
                             )}
                           </Td>
                           <Td>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              colorScheme="teal"
-                              isLoading={loadingCetak[item.id]}
-                              onClick={() => cetakBAST(item)}
-                            >
-                              Cetak BAST
-                            </Button>
+                            <VStack align="stretch" spacing={2}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                colorScheme="teal"
+                                isLoading={loadingCetak[item.id]}
+                                onClick={() => cetakBAST(item)}
+                              >
+                                Cetak BAST
+                              </Button>
+                              {sudahAdaBA && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  colorScheme="orange"
+                                  isLoading={loadingCetakBA[item.BAPenerimaanId]}
+                                  onClick={() => cetakUlangBAPenerimaan(item)}
+                                >
+                                  Cetak Ulang BA
+                                </Button>
+                              )}
+                            </VStack>
                           </Td>
                         </Tr>
                       );
@@ -443,6 +541,26 @@ const PengisianTanki = () => {
                   type="date"
                   value={baTanggal}
                   onChange={(e) => setBaTanggal(e.target.value)}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Ukuran Cairan</FormLabel>
+                <Input
+                  type="number"
+                  min={0}
+                  value={baUkuranCairan}
+                  onChange={(e) => setBaUkuranCairan(e.target.value)}
+                  placeholder="Masukkan ukuran cairan"
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Ukuran Air</FormLabel>
+                <Input
+                  type="number"
+                  min={0}
+                  value={baUkuranAir}
+                  onChange={(e) => setBaUkuranAir(e.target.value)}
+                  placeholder="Masukkan ukuran air"
                 />
               </FormControl>
             </VStack>

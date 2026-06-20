@@ -95,6 +95,7 @@ const DaftarMitra = () => {
   const [dataMitra, setDataMitra] = useState([]);
   const [dataTransportir, setDataTransportir] = useState([]);
   const [dataJenisTransportir, setDataJenisTransportir] = useState([]);
+  const [dataSatuanVolume, setDataSatuanVolume] = useState([]);
   const [previewFoto, setPreviewFoto] = useState(null);
 
   const {
@@ -124,6 +125,7 @@ const DaftarMitra = () => {
       setDataMitra(res.data.resultMitra || []);
       setDataTransportir(res.data.resultTransportir || []);
       setDataJenisTransportir(res.data.resultJenisTransportir || []);
+      setDataSatuanVolume(res.data.resultSatuanVolume || []);
     } catch (err) {
       console.error(err);
       toast({
@@ -191,6 +193,7 @@ const DaftarMitra = () => {
     jenisTransportirId: Yup.string().required(
       "Jenis transportir wajib dipilih",
     ),
+    satuanVolumeId: Yup.string().required("Satuan volume wajib dipilih"),
     pic: Yup.mixed().nullable(),
   });
 
@@ -299,8 +302,12 @@ const DaftarMitra = () => {
                       <Tr key={item.id}>
                         <Td>{index + 1}</Td>
                         <Td>{item.plat}</Td>
-                        <Td>{item.kapasitas}</Td>
-
+                        <Td>
+                          {item.kapasitas}
+                          {item?.satuanVolume?.satuan
+                            ? ` ${item.satuanVolume.satuan}`
+                            : ""}
+                        </Td>
                         <Td>{item?.jenisTransportir?.jenis}</Td>
                         <Td>
                           {item.foto ? (
@@ -492,6 +499,7 @@ const DaftarMitra = () => {
               plat: "",
               kapasitas: "",
               jenisTransportirId: "",
+              satuanVolumeId: "",
               pic: null,
               picPreview: null,
             }}
@@ -505,6 +513,7 @@ const DaftarMitra = () => {
                   "jenisTransportirId",
                   values.jenisTransportirId,
                 );
+                formData.append("satuanVolumeId", values.satuanVolumeId);
                 if (values.pic) formData.append("pic", values.pic);
 
                 await axios.post(
@@ -572,6 +581,29 @@ const DaftarMitra = () => {
                       </Select>
                       <FormErrorMessage>
                         {errors.jenisTransportirId}
+                      </FormErrorMessage>
+                    </FormControl>
+                    <FormControl
+                      isInvalid={
+                        touched.satuanVolumeId && errors.satuanVolumeId
+                      }
+                    >
+                      <FormLabel>Satuan Volume</FormLabel>
+                      <Select
+                        placeholder="Pilih satuan volume"
+                        value={values.satuanVolumeId}
+                        onChange={(e) =>
+                          setFieldValue("satuanVolumeId", e.target.value)
+                        }
+                      >
+                        {dataSatuanVolume.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.satuan}
+                          </option>
+                        ))}
+                      </Select>
+                      <FormErrorMessage>
+                        {errors.satuanVolumeId}
                       </FormErrorMessage>
                     </FormControl>
 

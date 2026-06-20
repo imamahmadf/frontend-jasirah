@@ -29,7 +29,7 @@ import {
 import Layout from "../Componets/Layout";
 import { useSelector } from "react-redux";
 import { selectIsAuthenticated, userRedux } from "../Redux/Reducers/auth";
-import FotoDinkes from "../assets/fototanki.png";
+import FotoDinkes from "../assets/fototanki.jpg";
 import { getSEOConfig } from "../config/seoConfig";
 import { useHistory } from "react-router-dom";
 import axios from "axios";

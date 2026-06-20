@@ -33,9 +33,7 @@ const API_BASE = import.meta.env.VITE_REACT_APP_API_BASE_URL;
 const pengisianSchema = Yup.object({
   tanggal: Yup.string().required("Tanggal wajib diisi"),
   tangkiId: Yup.string().required("Tangki wajib dipilih"),
-  flowMeter: Yup.number()
-    .typeError("Flow meter harus angka")
-    .required("Flow meter wajib diisi"),
+
   gross: Yup.number()
     .typeError("Gross harus angka")
     .required("Gross wajib diisi"),
@@ -46,6 +44,7 @@ const pengisianSchema = Yup.object({
     .typeError("Kandungan air harus angka")
     .required("Kandungan air wajib diisi"),
   BSW: Yup.number().typeError("BSW harus angka").required("BSW wajib diisi"),
+  satuanVolumeId: Yup.string().required("Satuan volume wajib dipilih"),
   catatan: Yup.string(),
   saksi: Yup.string().required("Saksi wajib diisi"),
   ids: Yup.array().of(Yup.string()),
@@ -56,7 +55,7 @@ const getTodayInputDate = () => new Date().toISOString().split("T")[0];
 const initialValues = {
   tanggal: getTodayInputDate(),
   tangkiId: "",
-  flowMeter: "",
+
   gross: "",
   net: "",
   penampilanVisual: "",
@@ -65,6 +64,7 @@ const initialValues = {
   BSW: "",
   catatan: "",
   saksi: "",
+  satuanVolumeId: "",
   ids: [],
 };
 
@@ -77,10 +77,16 @@ const formatDate = (date) => {
   });
 };
 
+const formatVolumeLabel = (volume, satuan) => {
+  if (volume === null || volume === undefined || volume === "") return "-";
+  return satuan ? `${volume} ${satuan}` : String(volume);
+};
+
 const TambahPengisianTanki = () => {
   const toast = useToast();
   const history = useHistory();
   const [dataTanki, setDataTanki] = useState([]);
+  const [dataSatuanVolume, setDataSatuanVolume] = useState([]);
   const [dataKonfirmasi, setDataKonfirmasi] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,6 +99,7 @@ const TambahPengisianTanki = () => {
         axios.get(`${API_BASE}/tanki/get/konfirmasi-penerimaan`),
       ]);
       setDataTanki(tankiRes.data.result || []);
+      setDataSatuanVolume(tankiRes.data.resultSatuanVolume || []);
       setDataKonfirmasi(konfirmasiRes.data.result || []);
     } catch (err) {
       console.error(err);
@@ -118,7 +125,7 @@ const TambahPengisianTanki = () => {
       await axios.post(`${API_BASE}/tanki/post`, {
         tanggal: values.tanggal,
         tangkiId: parseInt(values.tangkiId, 10),
-        flowMeter: parseInt(values.flowMeter, 10),
+
         gross: parseInt(values.gross, 10),
         net: parseInt(values.net, 10),
         penampilanVisual: values.penampilanVisual,
@@ -127,6 +134,7 @@ const TambahPengisianTanki = () => {
         BSW: parseInt(values.BSW, 10),
         catatan: values.catatan,
         saksi: values.saksi,
+        satuanVolumeId: parseInt(values.satuanVolumeId, 10),
         ids: values.ids.map((id) => parseInt(id, 10)),
       });
 
@@ -225,20 +233,6 @@ const TambahPengisianTanki = () => {
                         <FormErrorMessage>{errors.tangkiId}</FormErrorMessage>
                       </FormControl>
 
-                      <FormControl
-                        isInvalid={touched.flowMeter && errors.flowMeter}
-                      >
-                        <FormLabel>Flow Meter</FormLabel>
-                        <Input
-                          name="flowMeter"
-                          type="number"
-                          value={values.flowMeter}
-                          onChange={handleChange}
-                          onBlur={handleBlur}
-                        />
-                        <FormErrorMessage>{errors.flowMeter}</FormErrorMessage>
-                      </FormControl>
-
                       <FormControl isInvalid={touched.gross && errors.gross}>
                         <FormLabel>Gross</FormLabel>
                         <Input
@@ -261,6 +255,30 @@ const TambahPengisianTanki = () => {
                           onBlur={handleBlur}
                         />
                         <FormErrorMessage>{errors.net}</FormErrorMessage>
+                      </FormControl>
+
+                      <FormControl
+                        isInvalid={
+                          touched.satuanVolumeId && errors.satuanVolumeId
+                        }
+                      >
+                        <FormLabel>Satuan Volume</FormLabel>
+                        <Select
+                          name="satuanVolumeId"
+                          placeholder="Pilih satuan volume"
+                          value={values.satuanVolumeId}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                        >
+                          {dataSatuanVolume.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.satuan}
+                            </option>
+                          ))}
+                        </Select>
+                        <FormErrorMessage>
+                          {errors.satuanVolumeId}
+                        </FormErrorMessage>
                       </FormControl>
 
                       <FormControl
@@ -292,9 +310,7 @@ const TambahPengisianTanki = () => {
                       </FormControl>
 
                       <FormControl
-                        isInvalid={
-                          touched.kandunganAir && errors.kandunganAir
-                        }
+                        isInvalid={touched.kandunganAir && errors.kandunganAir}
                       >
                         <FormLabel>Kandungan Air</FormLabel>
                         <Input
@@ -372,7 +388,10 @@ const TambahPengisianTanki = () => {
                                 {" — "}
                                 {item.suratJalan?.mitra?.nama || "-"}
                                 {" — Vol: "}
-                                {item.volume ?? "-"}
+                                {formatVolumeLabel(
+                                  item.volume ?? item.suratJalan?.volume,
+                                  item.suratJalan?.satuanVolume?.satuan,
+                                )}
                               </Checkbox>
                             ))}
                           </Stack>
@@ -383,9 +402,7 @@ const TambahPengisianTanki = () => {
                     <HStack justify="flex-end" pt={4}>
                       <Button
                         variant="outline"
-                        onClick={() =>
-                          history.push("/tanki-kpbpn/pengisian")
-                        }
+                        onClick={() => history.push("/tanki-kpbpn/pengisian")}
                       >
                         Batal
                       </Button>

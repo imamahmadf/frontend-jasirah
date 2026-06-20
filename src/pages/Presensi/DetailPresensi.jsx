@@ -65,10 +65,17 @@ function DetailPresensi() {
   const [statusPresensiList, setStatusPresensiList] = useState([]);
   const [loadingStatusPresensi, setLoadingStatusPresensi] = useState(false);
   const [searchNamaPegawai, setSearchNamaPegawai] = useState("");
+  const [presensiToDelete, setPresensiToDelete] = useState(null);
+  const [isDeletingPresensi, setIsDeletingPresensi] = useState(false);
   const {
     isOpen: isModalPresensiOpen,
     onOpen: onOpenModalPresensi,
     onClose: onCloseModalPresensi,
+  } = useDisclosure();
+  const {
+    isOpen: isModalHapusOpen,
+    onOpen: onOpenModalHapus,
+    onClose: onCloseModalHapus,
   } = useDisclosure();
   const toast = useToast();
   const [isMobile] = useMediaQuery("(max-width: 768px)");
@@ -352,6 +359,76 @@ function DetailPresensi() {
     setEditingByPegawai((prev) => ({ ...prev, [pegawaiId]: false }));
   };
 
+  const refreshDataPresensi = async () => {
+    const token = localStorage.getItem("token");
+    const refreshed = await axios.get(
+      `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/presensi/get/daftar-presensi`,
+      {
+        params: { tanggal },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      },
+    );
+    const result = Array.isArray(refreshed?.data?.result)
+      ? refreshed.data.result
+      : [];
+    setDataPegawai(result);
+    setFormByPegawai(buildFormFromResult(result));
+    return result;
+  };
+
+  const handleBukaHapusPresensi = (pegawai) => {
+    const presensi = pegawai?.presensis?.[0];
+    if (!presensi?.id) return;
+    setPresensiToDelete({ pegawai, presensi });
+    onOpenModalHapus();
+  };
+
+  const handleTutupModalHapus = () => {
+    onCloseModalHapus();
+    setPresensiToDelete(null);
+  };
+
+  const handleHapusPresensi = async () => {
+    const presensiId = presensiToDelete?.presensi?.id;
+    if (!presensiId) return;
+
+    setIsDeletingPresensi(true);
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/presensi/hapus/${presensiId}`,
+        {},
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
+
+      toast({
+        title: "Berhasil",
+        description: `Presensi ${presensiToDelete?.pegawai?.nama || presensiToDelete?.pegawai?.namaPegawai || "-"} berhasil dihapus.`,
+        status: "success",
+      });
+
+      await refreshDataPresensi();
+      setEditingByPegawai((prev) => {
+        const pegawaiId = presensiToDelete?.pegawai?.id;
+        if (!pegawaiId) return prev;
+        return { ...prev, [pegawaiId]: false };
+      });
+      handleTutupModalHapus();
+    } catch (error) {
+      toast({
+        title: "Gagal hapus presensi",
+        description:
+          error?.response?.data?.message ||
+          "Gagal menghapus data presensi.",
+        status: "error",
+      });
+    } finally {
+      setIsDeletingPresensi(false);
+    }
+  };
+
   const handleSimpanPresensi = async (pegawai) => {
     const pegawaiId = pegawai?.id;
     if (!pegawaiId || !tanggal) return;
@@ -423,21 +500,7 @@ function DetailPresensi() {
         status: "success",
       });
 
-      const refreshed = await axios.get(
-        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/presensi/get/daftar-presensi`,
-        {
-          params: { tanggal },
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
-      );
-      setDataPegawai(
-        Array.isArray(refreshed?.data?.result) ? refreshed.data.result : [],
-      );
-      setFormByPegawai(
-        buildFormFromResult(
-          Array.isArray(refreshed?.data?.result) ? refreshed.data.result : [],
-        ),
-      );
+      await refreshDataPresensi();
 
       setEditingByPegawai((prev) => ({ ...prev, [pegawaiId]: false }));
     } catch (error) {
@@ -572,18 +635,7 @@ function DetailPresensi() {
         status: "success",
       });
 
-      const refreshed = await axios.get(
-        `${import.meta.env.VITE_REACT_APP_API_BASE_URL}/presensi/get/daftar-presensi`,
-        {
-          params: { tanggal },
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
-      );
-      const result = Array.isArray(refreshed?.data?.result)
-        ? refreshed.data.result
-        : [];
-      setDataPegawai(result);
-      setFormByPegawai(buildFormFromResult(result));
+      await refreshDataPresensi();
       setEditingByPegawai({});
       setSelectedPegawaiIds({});
       setIsModeBuatPresensi(false);
@@ -678,7 +730,7 @@ function DetailPresensi() {
   );
 
   const renderAksiPegawai = (pegawai, ctx) => {
-    const { isEditing, bisaDipilih, isSelected } = ctx;
+    const { isEditing, bisaDipilih, isSelected, presensi } = ctx;
 
     if (isModeBuatPresensi) {
       return (
@@ -718,15 +770,28 @@ function DetailPresensi() {
     }
 
     return (
-      <Button
-        size="sm"
-        colorScheme="yellow"
-        variant="outline"
-        onClick={() => handleMulaiEdit(pegawai?.id)}
-        w={{ base: "100%", md: "auto" }}
-      >
-        Edit
-      </Button>
+      <Stack direction={{ base: "column", sm: "row" }} spacing={2} w="100%">
+        <Button
+          size="sm"
+          colorScheme="yellow"
+          variant="outline"
+          onClick={() => handleMulaiEdit(pegawai?.id)}
+          flex={{ base: 1, sm: "none" }}
+        >
+          Edit
+        </Button>
+        {presensi?.id ? (
+          <Button
+            size="sm"
+            colorScheme="red"
+            variant="outline"
+            onClick={() => handleBukaHapusPresensi(pegawai)}
+            flex={{ base: 1, sm: "none" }}
+          >
+            Hapus
+          </Button>
+        ) : null}
+      </Stack>
     );
   };
 
@@ -1322,6 +1387,74 @@ function DetailPresensi() {
               w={{ base: "100%", sm: "auto" }}
             >
               Simpan
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={isModalHapusOpen}
+        onClose={handleTutupModalHapus}
+        isCentered
+        size={{ base: "full", md: "md" }}
+      >
+        <ModalOverlay />
+        <ModalContent
+          m={{ base: 0, md: "auto" }}
+          borderRadius={{ base: 0, md: "md" }}
+        >
+          <ModalHeader fontSize={{ base: "md", md: "lg" }}>
+            Hapus Presensi
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack align="stretch" spacing={3}>
+              <Text fontSize="sm">
+                Apakah Anda yakin ingin menghapus presensi berikut? Tindakan ini
+                tidak dapat dibatalkan.
+              </Text>
+              <Box
+                p={3}
+                borderWidth="1px"
+                borderRadius="md"
+                borderColor={cardBorder}
+                bg={colorMode === "dark" ? "gray.700" : "gray.50"}
+              >
+                <Text fontSize="sm" fontWeight="semibold">
+                  {presensiToDelete?.pegawai?.namaPegawai ||
+                    presensiToDelete?.pegawai?.nama ||
+                    "-"}
+                </Text>
+                <Text fontSize="xs" color={labelColor} mt={1}>
+                  NIP {presensiToDelete?.pegawai?.nip || "-"}
+                </Text>
+                <Text fontSize="xs" color={labelColor} mt={1}>
+                  Tanggal: {formattedTanggal}
+                </Text>
+              </Box>
+            </VStack>
+          </ModalBody>
+          <ModalFooter
+            flexDirection={{ base: "column-reverse", sm: "row" }}
+            gap={{ base: 2, sm: 0 }}
+          >
+            <Button
+              variant="outline"
+              mr={{ base: 0, sm: 3 }}
+              onClick={handleTutupModalHapus}
+              isDisabled={isDeletingPresensi}
+              w={{ base: "100%", sm: "auto" }}
+            >
+              Batal
+            </Button>
+            <Button
+              colorScheme="red"
+              onClick={handleHapusPresensi}
+              isLoading={isDeletingPresensi}
+              loadingText="Menghapus..."
+              w={{ base: "100%", sm: "auto" }}
+            >
+              Hapus
             </Button>
           </ModalFooter>
         </ModalContent>
