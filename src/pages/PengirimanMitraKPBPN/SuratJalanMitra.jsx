@@ -24,6 +24,7 @@ import {
   Divider,
   Badge,
   Flex,
+  HStack,
   Spacer,
   SimpleGrid,
   Skeleton,
@@ -35,12 +36,30 @@ import {
   ModalFooter,
   ModalCloseButton,
   useDisclosure,
+  IconButton,
 } from "@chakra-ui/react";
 import { Select as Select2, AsyncSelect } from "chakra-react-select";
+import { BsFileEarmarkWord, BsFileEarmarkPdf } from "react-icons/bs";
 import LayoutKPBPN from "../../Componets/KPBPN/LayoutKPBPN";
 import "../../Style/pagination.css";
 
 const API_BASE = import.meta.env.VITE_REACT_APP_API_BASE_URL;
+
+const getDownloadFileName = (contentDisposition, fallback) => {
+  if (!contentDisposition) return fallback;
+  const utf8Name = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Name?.[1]) {
+    try {
+      return decodeURIComponent(utf8Name[1]);
+    } catch {
+      return utf8Name[1];
+    }
+  }
+  const quotedName = contentDisposition.match(/filename="([^"]+)"/i);
+  if (quotedName?.[1]) return quotedName[1];
+  const plainName = contentDisposition.match(/filename=([^;]+)/i);
+  return plainName?.[1]?.trim() || fallback;
+};
 
 const suratJalanSchema = Yup.object({
   tanggal: Yup.string().required("Tanggal wajib diisi"),
@@ -297,21 +316,28 @@ const SuratJalanMitra = () => {
     return mitraData?.supirs || [];
   };
 
-  const cetakSuratJalan = async (item) => {
-    setLoadingCetak((prev) => ({ ...prev, [item.id]: true }));
+  const cetakSuratJalan = async (item, format = "pdf") => {
+    const loadingKey = `${item.id}_${format}`;
+    setLoadingCetak((prev) => ({ ...prev, [loadingKey]: true }));
     try {
       const res = await axios.get(
         `${API_BASE}/pengiriman/get/cetak/${item.id}`,
-        { responseType: "blob" },
+        { params: { format }, responseType: "blob" },
       );
 
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const isDocx = format === "docx";
+      const mime = isDocx
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : "application/pdf";
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: mime }));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute(
-        "download",
-        `surat-jalan_${item.nomor || item.id}.docx`,
+      const fallbackName = `surat-jalan_${item.nomor || item.id}.${isDocx ? "docx" : "pdf"}`;
+      const headerName = getDownloadFileName(
+        res.headers?.["content-disposition"],
+        fallbackName,
       );
+      link.setAttribute("download", headerName);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -319,7 +345,7 @@ const SuratJalanMitra = () => {
 
       toast({
         title: "Berhasil",
-        description: "Dokumen surat jalan berhasil diunduh",
+        description: `Dokumen surat jalan ${isDocx ? "Word" : "PDF"} berhasil diunduh`,
         status: "success",
         duration: 3000,
         isClosable: true,
@@ -348,7 +374,7 @@ const SuratJalanMitra = () => {
         isClosable: true,
       });
     } finally {
-      setLoadingCetak((prev) => ({ ...prev, [item.id]: false }));
+      setLoadingCetak((prev) => ({ ...prev, [loadingKey]: false }));
     }
   };
 
@@ -664,15 +690,28 @@ const SuratJalanMitra = () => {
                         </Td>
                         <Td>
                           {item.statusSuratJalanId !== 1 ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              colorScheme="teal"
-                              isLoading={loadingCetak[item.id]}
-                              onClick={() => cetakSuratJalan(item)}
-                            >
-                              Cetak
-                            </Button>
+                            <HStack spacing={1}>
+                              <IconButton
+                                aria-label="Unduh Word"
+                                title="Unduh Word"
+                                icon={<BsFileEarmarkWord />}
+                                size="sm"
+                                variant="ghost"
+                                colorScheme="blue"
+                                isLoading={loadingCetak[`${item.id}_docx`]}
+                                onClick={() => cetakSuratJalan(item, "docx")}
+                              />
+                              <IconButton
+                                aria-label="Unduh PDF"
+                                title="Unduh PDF"
+                                icon={<BsFileEarmarkPdf />}
+                                size="sm"
+                                variant="ghost"
+                                colorScheme="red"
+                                isLoading={loadingCetak[`${item.id}_pdf`]}
+                                onClick={() => cetakSuratJalan(item, "pdf")}
+                              />
+                            </HStack>
                           ) : (
                             "-"
                           )}

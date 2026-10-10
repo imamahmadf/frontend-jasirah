@@ -56,9 +56,18 @@ import {
 
 function TambahUnitKerja(props) {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
   const [unitKerja, setUnitKerja] = useState("");
   const [kode, setKode] = useState("");
   const [asal, setAsal] = useState("");
+  const [status, setStatus] = useState("");
+
+  const resetForm = () => {
+    setUnitKerja("");
+    setKode("");
+    setAsal("");
+    setStatus("");
+  };
 
   const postUnitKerja = () => {
     axios
@@ -70,15 +79,32 @@ function TambahUnitKerja(props) {
           unitKerja,
           kode,
           asal,
+          status: status || null,
           indukUnitKerjaId: props.indukUnitKerjaId,
         }
       )
       .then((res) => {
         console.log(res.data);
+        resetForm();
         onClose();
+        if (props.onSuccess) props.onSuccess();
+        toast({
+          title: "Berhasil",
+          description: "Unit kerja berhasil ditambahkan",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
       })
       .catch((err) => {
         console.error(err);
+        toast({
+          title: "Error",
+          description: "Gagal menambahkan unit kerja",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
       });
   };
   return (
@@ -125,6 +151,19 @@ function TambahUnitKerja(props) {
                 height="60px"
                 placeholder="isi dengan Kode"
               />
+            </FormControl>
+            <FormControl my={"30px"}>
+              <FormLabel fontSize={"24px"}>Status</FormLabel>
+              <Select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                bgColor={"terang"}
+                height="60px"
+                placeholder="Pilih status (opsional)"
+              >
+                <option value="gudang">Gudang</option>
+                <option value="non-gudang">Non Gudang</option>
+              </Select>
             </FormControl>
           </ModalBody>
 

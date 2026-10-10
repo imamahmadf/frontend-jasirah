@@ -100,7 +100,7 @@ const PengisianTanki = () => {
   };
 
   const toggleSelectItem = (item) => {
-    if (item.BAPenerimaanId) return;
+    if (item.BABongkarId) return;
 
     setSelectedIds((prev) =>
       prev.includes(item.id)
@@ -126,7 +126,7 @@ const PengisianTanki = () => {
     onOpen();
   };
 
-  const handleSubmitBAPenerimaan = async () => {
+  const handleSubmitBABongkar = async () => {
     if (!baTanggal) {
       toast({
         title: "Tanggal wajib diisi",
@@ -140,7 +140,7 @@ const PengisianTanki = () => {
     setIsSubmittingBA(true);
     try {
       const res = await axios.post(
-        `${API_BASE}/tanki/post/ba-penerimaan`,
+        `${API_BASE}/tanki/post/ba-bongkar`,
         {
           tanggal: baTanggal,
           ukuranCairan: baUkuranCairan !== "" ? Number(baUkuranCairan) : null,
@@ -155,7 +155,7 @@ const PengisianTanki = () => {
       link.href = url;
       link.setAttribute(
         "download",
-        `BA_Penerimaan_${baTanggal}_${Date.now()}.docx`,
+        `BA_Bongkar_${baTanggal}_${Date.now()}.docx`,
       );
       document.body.appendChild(link);
       link.click();
@@ -164,7 +164,7 @@ const PengisianTanki = () => {
 
       toast({
         title: "Berhasil",
-        description: "BA Penerimaan berhasil dibuat dan diunduh",
+        description: "BA Bongkar berhasil dibuat dan diunduh",
         status: "success",
         duration: 4000,
         isClosable: true,
@@ -175,7 +175,7 @@ const PengisianTanki = () => {
       fetchDataPengisianTanki();
     } catch (err) {
       console.error(err);
-      let message = "Gagal membuat BA Penerimaan";
+      let message = "Gagal membuat BA Bongkar";
       if (err.response?.data instanceof Blob) {
         try {
           const text = await err.response.data.text();
@@ -200,16 +200,16 @@ const PengisianTanki = () => {
     }
   };
 
-  const cetakUlangBAPenerimaan = async (item) => {
-    const baId = item.BAPenerimaanId;
+  const cetakUlangBABongkar = async (item) => {
+    const baId = item.BABongkarId;
     if (!baId) return;
 
     setLoadingCetakBA((prev) => ({ ...prev, [baId]: true }));
 
     try {
       const res = await axios.post(
-        `${API_BASE}/tanki/cetak/ba-penerimaan`,
-        { BAPenerimaanId: baId },
+        `${API_BASE}/tanki/cetak/ba-bongkar`,
+        { BABongkarId: baId },
         { responseType: "blob" },
       );
 
@@ -218,7 +218,7 @@ const PengisianTanki = () => {
       link.href = url;
       link.setAttribute(
         "download",
-        `BA_Penerimaan_${baId}_${Date.now()}.docx`,
+        `BA_Bongkar_${baId}_${Date.now()}.docx`,
       );
       document.body.appendChild(link);
       link.click();
@@ -227,14 +227,14 @@ const PengisianTanki = () => {
 
       toast({
         title: "Berhasil",
-        description: "Dokumen BA Penerimaan berhasil diunduh",
+        description: "Dokumen BA Bongkar berhasil diunduh",
         status: "success",
         duration: 3000,
         isClosable: true,
       });
     } catch (err) {
       console.error(err);
-      let message = "Gagal mencetak ulang BA Penerimaan";
+      let message = "Gagal mencetak ulang BA Bongkar";
       if (err.response?.data instanceof Blob) {
         try {
           const text = await err.response.data.text();
@@ -346,7 +346,7 @@ const PengisianTanki = () => {
                     onClick={handleOpenModalBA}
                     isDisabled={!selectedIds.length}
                   >
-                    Simpan BA Penerimaan
+                    Simpan BA Bongkar
                   </Button>
                 </>
               )}
@@ -355,7 +355,7 @@ const PengisianTanki = () => {
                 colorScheme="orange"
                 onClick={toggleSelectMode}
               >
-                {isSelectMode ? "Mode Pilih Aktif" : "Buat BA Penerimaan"}
+                {isSelectMode ? "Mode Pilih Aktif" : "Buat BA Bongkar"}
               </Button>
               <Button
                 variant="primary"
@@ -392,7 +392,7 @@ const PengisianTanki = () => {
                     <Th>Saksi</Th>
                     <Th>Konfirmasi Penerimaan</Th>
                     <Th>Nomor Surat BAST</Th>
-                    <Th>BA Penerimaan</Th>
+                    <Th>BA Bongkar</Th>
                     <Th>Aksi</Th>
                   </Tr>
                 </Thead>
@@ -405,7 +405,7 @@ const PengisianTanki = () => {
                     </Tr>
                   ) : (
                     dataPengisian.map((item, index) => {
-                      const sudahAdaBA = Boolean(item.BAPenerimaanId);
+                      const sudahAdaBA = Boolean(item.BABongkarId);
                       const isSelected = selectedIds.includes(item.id);
 
                       return (
@@ -448,8 +448,8 @@ const PengisianTanki = () => {
                           <Td>{item.warna || "-"}</Td>
                           <Td>{item.kandunganAir ?? "-"}</Td>
                           <Td>{item.BSW ?? "-"}</Td>
-                          <Td>{item.BAPenerimaan?.ukuranCairan ?? "-"}</Td>
-                          <Td>{item.BAPenerimaan?.ukuranAir ?? "-"}</Td>
+                          <Td>{item.BABongkar?.ukuranCairan ?? "-"}</Td>
+                          <Td>{item.BABongkar?.ukuranAir ?? "-"}</Td>
                           <Td>{item.catatan || "-"}</Td>
                           <Td>{item.saksi || "-"}</Td>
                           <Td>
@@ -484,7 +484,7 @@ const PengisianTanki = () => {
                           <Td>
                             {sudahAdaBA ? (
                               <Badge colorScheme="green">
-                                BA #{item.BAPenerimaanId}
+                                BA #{item.BABongkarId}
                               </Badge>
                             ) : (
                               <Badge colorScheme="gray">Belum</Badge>
@@ -506,8 +506,8 @@ const PengisianTanki = () => {
                                   size="sm"
                                   variant="outline"
                                   colorScheme="orange"
-                                  isLoading={loadingCetakBA[item.BAPenerimaanId]}
-                                  onClick={() => cetakUlangBAPenerimaan(item)}
+                                  isLoading={loadingCetakBA[item.BABongkarId]}
+                                  onClick={() => cetakUlangBABongkar(item)}
                                 >
                                   Cetak Ulang BA
                                 </Button>
@@ -528,7 +528,7 @@ const PengisianTanki = () => {
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Buat BA Penerimaan</ModalHeader>
+          <ModalHeader>Buat BA Bongkar</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <VStack spacing={4} align="stretch">
@@ -536,7 +536,7 @@ const PengisianTanki = () => {
                 {selectedIds.length} pengisian tanki dipilih
               </Text>
               <FormControl isRequired>
-                <FormLabel>Tanggal BA Penerimaan</FormLabel>
+                <FormLabel>Tanggal BA Bongkar</FormLabel>
                 <Input
                   type="date"
                   value={baTanggal}
@@ -571,7 +571,7 @@ const PengisianTanki = () => {
             </Button>
             <Button
               colorScheme="orange"
-              onClick={handleSubmitBAPenerimaan}
+              onClick={handleSubmitBABongkar}
               isLoading={isSubmittingBA}
             >
               Simpan

@@ -26,6 +26,7 @@ import {
   CardBody,
   CardHeader,
   Input,
+  Select,
   useToast,
   Badge,
   VStack,
@@ -51,6 +52,7 @@ function DetailIndukUnitKerja(props) {
     unitKerja: "",
     kode: "",
     asal: "",
+    status: "",
   });
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [editIndukForm, setEditIndukForm] = useState({
@@ -107,29 +109,46 @@ function DetailIndukUnitKerja(props) {
     fetchDataIndukUnitKerja();
   }, []);
 
+  const getStatusLabel = (status) => {
+    if (status === "gudang") return "Gudang";
+    if (status === "non-gudang") return "Non Gudang";
+    return "-";
+  };
+
+  const getStatusColor = (status) => {
+    if (status === "gudang") return "green";
+    if (status === "non-gudang") return "orange";
+    return "gray";
+  };
+
   const handleEdit = (item) => {
     setEditingId(item.id);
     setEditForm({
       unitKerja: item.unitKerja,
       kode: item.kode,
       asal: item.asal,
+      status: item.status || "",
     });
   };
 
   const handleSave = async (id) => {
     try {
-      const response = await axios.post(
+      const payload = {
+        ...editForm,
+        status: editForm.status || null,
+      };
+
+      await axios.post(
         `${
           import.meta.env.VITE_REACT_APP_API_BASE_URL
         }/induk-unit-kerja/edit/unit-kerja/${id}`,
-        editForm
+        payload
       );
 
-      // Update data lokal
       setData((prevData) => ({
         ...prevData,
         daftarUnitKerjas: prevData.daftarUnitKerjas.map((item) =>
-          item.id === id ? { ...item, ...editForm } : item
+          item.id === id ? { ...item, ...payload } : item
         ),
       }));
 
@@ -282,6 +301,7 @@ function DetailIndukUnitKerja(props) {
             </VStack>
             <TambahUnitKerja
               indukUnitKerjaId={user[0].unitKerja_profile.indukUnitKerja.id}
+              onSuccess={fetchDataIndukUnitKerja}
             />
             <Table variant={"primary"} mt={"30px"}>
               <Thead>
@@ -290,6 +310,7 @@ function DetailIndukUnitKerja(props) {
                   <Th>Unit Kerja</Th>
                   <Th>kode</Th>
                   <Th>Asal</Th>
+                  <Th>Status</Th>
                   <Th>Aksi</Th>
                 </Tr>
               </Thead>
@@ -340,6 +361,30 @@ function DetailIndukUnitKerja(props) {
                         />
                       ) : (
                         item.asal
+                      )}
+                    </Td>
+                    <Td>
+                      {editingId === item.id ? (
+                        <Select
+                          value={editForm.status}
+                          onChange={(e) =>
+                            setEditForm((prev) => ({
+                              ...prev,
+                              status: e.target.value,
+                            }))
+                          }
+                          placeholder="Pilih status"
+                        >
+                          <option value="">Hapus status</option>
+                          <option value="gudang">Gudang</option>
+                          <option value="non-gudang">Non Gudang</option>
+                        </Select>
+                      ) : item.status ? (
+                        <Badge colorScheme={getStatusColor(item.status)}>
+                          {getStatusLabel(item.status)}
+                        </Badge>
+                      ) : (
+                        <Text color="gray.400">-</Text>
                       )}
                     </Td>
                     <Td>

@@ -32,6 +32,7 @@ import {
   useDisclosure,
   Spinner,
   Center,
+  Select,
 } from "@chakra-ui/react";
 import { AsyncSelect } from "chakra-react-select";
 import LayoutKPBPN from "../../Componets/KPBPN/LayoutKPBPN";
@@ -90,12 +91,14 @@ const tankiSchema = Yup.object({
     .positive("Kapasitas harus lebih dari 0")
     .required("Kapasitas wajib diisi"),
   unitKerjaId: Yup.mixed().nullable().required("Unit kerja wajib dipilih"),
+  satuanVolumeId: Yup.string().required("Satuan volume wajib dipilih"),
   pic: Yup.mixed().nullable(),
 });
 
 const DaftarTanki = () => {
   const toast = useToast();
   const [dataTanki, setDataTanki] = useState([]);
+  const [dataSatuanVolume, setDataSatuanVolume] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [previewFoto, setPreviewFoto] = useState(null);
 
@@ -115,6 +118,7 @@ const DaftarTanki = () => {
     try {
       const res = await axios.get(`${API_BASE}/tanki/get/tanki`);
       setDataTanki(res.data.result || []);
+      setDataSatuanVolume(res.data.resultSatuanVolume || []);
     } catch (err) {
       console.error(err);
       toast({
@@ -219,7 +223,12 @@ const DaftarTanki = () => {
                         <Td>{index + 1}</Td>
                         <Td>{item.kode || "-"}</Td>
                         <Td>{item.daftarUnitKerja?.unitKerja || "-"}</Td>
-                        <Td>{item.kapasitas ?? "-"}</Td>
+                        <Td>
+                          {item.kapasitas ?? "-"}
+                          {item?.satuanVolume?.satuan
+                            ? ` ${item.satuanVolume.satuan}`
+                            : ""}
+                        </Td>
                         <Td>
                           {item.foto ? (
                             <Image
@@ -257,6 +266,7 @@ const DaftarTanki = () => {
               kapasitas: "",
               unitKerjaId: null,
               unitKerjaLabel: "",
+              satuanVolumeId: "",
               pic: null,
               picPreview: null,
             }}
@@ -267,6 +277,7 @@ const DaftarTanki = () => {
                 formData.append("kode", values.kode);
                 formData.append("kapasitas", values.kapasitas);
                 formData.append("unitKerjaId", values.unitKerjaId);
+                formData.append("satuanVolumeId", values.satuanVolumeId);
                 if (values.pic) formData.append("pic", values.pic);
 
                 await axios.post(`${API_BASE}/tanki/post/tanki`, formData, {
@@ -307,7 +318,7 @@ const DaftarTanki = () => {
                     <FormControl
                       isInvalid={touched.kapasitas && errors.kapasitas}
                     >
-                      <FormLabel>Kapasitas (liter)</FormLabel>
+                      <FormLabel>Kapasitas</FormLabel>
                       <Input
                         name="kapasitas"
                         type="number"
@@ -317,6 +328,30 @@ const DaftarTanki = () => {
                         }
                       />
                       <FormErrorMessage>{errors.kapasitas}</FormErrorMessage>
+                    </FormControl>
+
+                    <FormControl
+                      isInvalid={
+                        touched.satuanVolumeId && errors.satuanVolumeId
+                      }
+                    >
+                      <FormLabel>Satuan Volume</FormLabel>
+                      <Select
+                        placeholder="Pilih satuan volume"
+                        value={values.satuanVolumeId}
+                        onChange={(e) =>
+                          setFieldValue("satuanVolumeId", e.target.value)
+                        }
+                      >
+                        {dataSatuanVolume.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.satuan}
+                          </option>
+                        ))}
+                      </Select>
+                      <FormErrorMessage>
+                        {errors.satuanVolumeId}
+                      </FormErrorMessage>
                     </FormControl>
 
                     <FormControl

@@ -675,7 +675,7 @@ function DetailLaporan(props) {
                         )?.unitKerja ||
                         "-"}
                     </Td>
-                    <Td>{item?.sumberDana.sumber}</Td>
+                    <Td>{item?.sumberDana?.sumber}</Td>
                     <Td>
                       {
                         item?.persediaan?.tipePersediaan?.rinObPersediaan
@@ -1352,9 +1352,7 @@ function DetailLaporan(props) {
             bg={colorMode === "dark" ? "gray.800" : "white"}
             borderRadius="10px"
           >
-            <ModalHeader
-              color={colorMode === "dark" ? "white" : "gray.700"}
-            >
+            <ModalHeader color={colorMode === "dark" ? "white" : "gray.700"}>
               Konfirmasi Hapus
             </ModalHeader>
             <ModalCloseButton

@@ -82,6 +82,15 @@ const formatVolumeLabel = (volume, satuan) => {
   return satuan ? `${volume} ${satuan}` : String(volume);
 };
 
+const getLinkedTankiKode = (kp) =>
+  Array.from(
+    new Set(
+      (kp.pengisianTankis || [])
+        .map((item) => item.tanki?.kode)
+        .filter(Boolean),
+    ),
+  );
+
 const TambahPengisianTanki = () => {
   const toast = useToast();
   const history = useHistory();
@@ -221,7 +230,18 @@ const TambahPengisianTanki = () => {
                           name="tangkiId"
                           placeholder="Pilih tangki"
                           value={values.tangkiId}
-                          onChange={handleChange}
+                          onChange={(e) => {
+                            handleChange(e);
+                            const selected = dataTanki.find(
+                              (item) => String(item.id) === e.target.value,
+                            );
+                            if (selected?.satuanVolumeId) {
+                              setFieldValue(
+                                "satuanVolumeId",
+                                String(selected.satuanVolumeId),
+                              );
+                            }
+                          }}
                           onBlur={handleBlur}
                         >
                           {dataTanki.map((item) => (
@@ -367,8 +387,8 @@ const TambahPengisianTanki = () => {
                         Konfirmasi Penerimaan (opsional)
                       </FormLabel>
                       <Text fontSize="sm" color="gray.500" mb={3}>
-                        Pilih konfirmasi penerimaan yang belum terhubung ke
-                        pengisian tanki
+                        Konfirmasi yang sudah terhubung ke tanki lain tetap
+                        dapat dipilih untuk tanki berikutnya.
                       </Text>
                       {dataKonfirmasi.length === 0 ? (
                         <Text fontSize="sm" color="gray.500">
@@ -380,20 +400,27 @@ const TambahPengisianTanki = () => {
                           onChange={(val) => setFieldValue("ids", val)}
                         >
                           <Stack spacing={2}>
-                            {dataKonfirmasi.map((item) => (
-                              <Checkbox key={item.id} value={String(item.id)}>
-                                {item.nomor || `Konfirmasi #${item.id}`}
-                                {" — "}
-                                {formatDate(item.tanggal)}
-                                {" — "}
-                                {item.suratJalan?.mitra?.nama || "-"}
-                                {" — Vol: "}
-                                {formatVolumeLabel(
-                                  item.volume ?? item.suratJalan?.volume,
-                                  item.suratJalan?.satuanVolume?.satuan,
-                                )}
-                              </Checkbox>
-                            ))}
+                            {dataKonfirmasi.map((item) => {
+                              const linkedTanki = getLinkedTankiKode(item);
+
+                              return (
+                                <Checkbox key={item.id} value={String(item.id)}>
+                                  {item.nomor || `Konfirmasi #${item.id}`}
+                                  {" — "}
+                                  {formatDate(item.tanggal)}
+                                  {" — "}
+                                  {item.suratJalan?.mitra?.nama || "-"}
+                                  {" — Vol: "}
+                                  {formatVolumeLabel(
+                                    item.volume ?? item.suratJalan?.volume,
+                                    item.suratJalan?.satuanVolume?.satuan,
+                                  )}
+                                  {linkedTanki.length > 0
+                                    ? ` — Tanki: ${linkedTanki.join(", ")}`
+                                    : ""}
+                                </Checkbox>
+                              );
+                            })}
                           </Stack>
                         </CheckboxGroup>
                       )}
