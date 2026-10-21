@@ -73,6 +73,8 @@ import DetailTrackingPersediaan from "./pages/Aset/DetailTrackingPersediaan.jsx"
 import MutasiPersediaan from "./pages/Aset/MutasiPersediaan.jsx";
 import RekapAdminAset from "./pages/Aset/RekapAdminAset.jsx";
 import SuratPesanan from "./pages/Aset/SuratPesanan.jsx";
+import DaftarAset from "./pages/Aset/DaftarAset.jsx";
+import DetailAset from "./pages/Aset/DetailAset.jsx";
 import LaporanUsulanPegawai from "./pages/Pegawai/LaporanUsulanPegawai.jsx";
 import NaikJenjang from "./pages/Pegawai/NaikJenjang.jsx";
 import DaftarNaikJenjang from "./pages/Pegawai/DaftarNaikJenjang.jsx";
@@ -578,6 +580,18 @@ function App() {
           <ProtectedRoute
             component={MutasiPersediaan}
             path="/aset/mutasi-persediaan"
+            exact
+            roleRoute={[5, 10, 8]}
+          />
+          <ProtectedRoute
+            component={DaftarAset}
+            path="/aset/daftar-aset"
+            exact
+            roleRoute={[5, 10, 8]}
+          />
+          <ProtectedRoute
+            component={DetailAset}
+            path="/aset/detail-aset/:id"
             exact
             roleRoute={[5, 10, 8]}
           />

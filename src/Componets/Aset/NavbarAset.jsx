@@ -92,6 +92,7 @@ const menuData = [
       { label: "Mutasi Persediaan", path: "/aset/mutasi-persediaan" },
       { label: "Laporan Persediaan", path: "/aset/laporan-persediaan" },
       { label: "Surat Pesanan", path: "/aset/surat-pesanan" },
+      { label: "Pencatatan Aset", path: "/aset/daftar-aset" },
     ],
   },
 

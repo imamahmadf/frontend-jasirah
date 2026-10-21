@@ -60,6 +60,11 @@ import { userRedux, selectRole } from "../../Redux/Reducers/auth";
 function LaporanPersediaanKeluar(props) {
   const [DataPersediaan, setDataPersediaan] = useState([]);
   const [page, setPage] = useState(0);
+  const [pageLimit, setPageLimit] = useState(10);
+  const [keyword, setKeyword] = useState("");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
+  const [filterTanggalFrom, setFilterTanggalFrom] = useState("");
+  const [filterTanggalTo, setFilterTanggalTo] = useState("");
 
   const toast = useToast();
   const { colorMode, toggleColorMode } = useColorMode();
@@ -472,6 +477,7 @@ function LaporanPersediaanKeluar(props) {
         ...(showUnitKerjaColumn ? ["Unit Kerja"] : []),
         "Harga Satuan",
         "Stok Awal",
+        "Tanggal Masuk",
         "Tanggal",
         "Tujuan",
         "Jumlah Keluar",
@@ -485,7 +491,7 @@ function LaporanPersediaanKeluar(props) {
 
       // Add data rows
       let rowNumber = 1;
-      grouped.forEach((group) => {
+      filteredGroups.forEach((group) => {
         group.rows.forEach((row, idx) => {
           const dataRow = worksheet.addRow([
             rowNumber,
@@ -496,6 +502,11 @@ function LaporanPersediaanKeluar(props) {
               ? group.mergedHargaSatuan
               : row.hargaSatuan,
             idx === 0 ? group.stokAwal : "",
+            idx === 0
+              ? group.tanggalMasuk
+                ? new Date(group.tanggalMasuk).toLocaleDateString("id-ID")
+                : "-"
+              : "",
             row.tanggal
               ? new Date(row.tanggal).toLocaleDateString("id-ID")
               : "-",
@@ -506,8 +517,8 @@ function LaporanPersediaanKeluar(props) {
 
           const hargaCol = showUnitKerjaColumn ? 5 : 4;
           const stokAwalCol = showUnitKerjaColumn ? 6 : 5;
-          const jumlahKeluarCol = showUnitKerjaColumn ? 9 : 8;
-          const sisaCol = showUnitKerjaColumn ? 10 : 9;
+          const jumlahKeluarCol = showUnitKerjaColumn ? 10 : 9;
+          const sisaCol = showUnitKerjaColumn ? 11 : 10;
 
           // Apply styles
           dataRow.eachCell((cell, colNumber) => {
@@ -595,7 +606,7 @@ function LaporanPersediaanKeluar(props) {
     if (filterUnitKerjaId) {
       fetchPersediaanKeluar(filterUnitKerjaId);
     }
-  }, [page, filterUnitKerjaId]);
+  }, [filterUnitKerjaId]);
 
   const unitKerjaFilterOptions = [
     { value: FILTER_ALL, label: "Semua Unit Kerja" },
@@ -607,7 +618,7 @@ function LaporanPersediaanKeluar(props) {
 
   const showUnitKerjaColumn = filterUnitKerjaId === FILTER_ALL;
   const tableColSpan =
-    (showUnitKerjaColumn ? 12 : 11) + (showAksiKeluar ? 1 : 0);
+    (showUnitKerjaColumn ? 13 : 12) + (showAksiKeluar ? 1 : 0);
   // Siapkan data terkelompok per persediaan, agar Nama Persediaan tidak berulang
   const grouped = Array.isArray(DataPersediaan?.data)
     ? DataPersediaan.data.map((item) => {
@@ -662,6 +673,7 @@ function LaporanPersediaanKeluar(props) {
           rows,
           totalKeluar,
           stokAwal: Number(item?.stokAwal) || 0,
+          tanggalMasuk: item?.tanggalMasuk || null,
           foto: item?.foto || null,
           isStokMasukIdUniform,
           groupStokMasukId,
@@ -669,12 +681,50 @@ function LaporanPersediaanKeluar(props) {
       })
     : [];
 
+  const toDateKey = (value) => {
+    if (!value) return "";
+    const text = String(value);
+    return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : "";
+  };
+
+  const filteredGroups = grouped.filter((group) => {
+    if (appliedKeyword) {
+      const q = appliedKeyword.toLowerCase();
+      const nama = String(group.namaPersediaan || "").toLowerCase();
+      const kode = String(group.kodeBarang || "").toLowerCase();
+      const unit = String(group.unitKerja || "").toLowerCase();
+      if (!nama.includes(q) && !kode.includes(q) && !unit.includes(q)) {
+        return false;
+      }
+    }
+    const tanggalMasuk = toDateKey(group.tanggalMasuk);
+    if (filterTanggalFrom && (!tanggalMasuk || tanggalMasuk < filterTanggalFrom)) {
+      return false;
+    }
+    if (filterTanggalTo && (!tanggalMasuk || tanggalMasuk > filterTanggalTo)) {
+      return false;
+    }
+    return true;
+  });
+
+  const totalPage = Math.ceil(filteredGroups.length / pageLimit) || 0;
+  const safePage = totalPage === 0 ? 0 : Math.min(page, totalPage - 1);
+  const pagedGroups = filteredGroups.slice(
+    safePage * pageLimit,
+    safePage * pageLimit + pageLimit,
+  );
+
   const summary = useMemo(() => {
-    const totalBarang = grouped.length;
-    const totalKeluar = grouped.reduce((s, g) => s + g.totalKeluar, 0);
-    const totalSisa = grouped.reduce((s, g) => s + (Number(g.sisa) || 0), 0);
+    const totalBarang = filteredGroups.length;
+    const totalKeluar = filteredGroups.reduce((s, g) => s + g.totalKeluar, 0);
+    const totalSisa = filteredGroups.reduce((s, g) => s + (Number(g.sisa) || 0), 0);
     return { totalBarang, totalKeluar, totalSisa };
-  }, [grouped]);
+  }, [filteredGroups]);
+
+  const terapkanPencarian = () => {
+    setPage(0);
+    setAppliedKeyword(keyword.trim());
+  };
 
   const periode = DataPersediaan?.periode;
   const formatTanggal = (d) =>
@@ -704,8 +754,6 @@ function LaporanPersediaanKeluar(props) {
 
   const getValidRows = (group) =>
     group.rows.filter((r) => r.jumlahKeluar > 0 || r.tanggal || r.tujuan);
-
-  let groupNumber = 0;
 
   const InfoRow = ({ label, value, valueColor }) => (
     <Flex justify="space-between" align="flex-start" py={1.5} gap={3}>
@@ -780,7 +828,7 @@ function LaporanPersediaanKeluar(props) {
   );
 
   const renderMobileCards = () => {
-    if (!grouped.length) {
+    if (!pagedGroups.length) {
       return (
         <Box py={8} textAlign="center" bg="gray.50" borderRadius="md">
           <Text color="gray.500">Tidak ada data persediaan keluar</Text>
@@ -788,9 +836,8 @@ function LaporanPersediaanKeluar(props) {
       );
     }
 
-    let no = 0;
-    return grouped.map((group) => {
-      no += 1;
+    return pagedGroups.map((group, index) => {
+      const no = safePage * pageLimit + index + 1;
       const showTambah = periode?.statusLaporan === "buka";
       const validRows = getValidRows(group);
 
@@ -826,6 +873,10 @@ function LaporanPersediaanKeluar(props) {
               <Badge colorScheme="green">Sisa: {group.sisa}</Badge>
             </HStack>
 
+            <InfoRow
+              label="Tanggal Masuk"
+              value={formatTanggal(group.tanggalMasuk)}
+            />
             <InfoRow
               label="Harga Satuan"
               value={
@@ -923,6 +974,7 @@ function LaporanPersediaanKeluar(props) {
               <Flex
                 direction={{ base: "column", md: "row" }}
                 align={{ base: "stretch", md: "flex-end" }}
+                wrap="wrap"
                 gap={4}
               >
                 <FormControl maxW={{ base: "full", md: "320px" }} flexShrink={0}>
@@ -940,6 +992,7 @@ function LaporanPersediaanKeluar(props) {
                         : null
                     }
                     onChange={(selectedOption) => {
+                      setPage(0);
                       setFilterUnitKerjaId(selectedOption?.value || null);
                     }}
                     components={{
@@ -957,6 +1010,88 @@ function LaporanPersediaanKeluar(props) {
                         border: "0px",
                         minHeight: "42px",
                         boxShadow: "sm",
+                      }),
+                      option: (provided, state) => ({
+                        ...provided,
+                        bg: state.isFocused ? "aset" : "white",
+                        color: state.isFocused ? "white" : "black",
+                      }),
+                    }}
+                  />
+                </FormControl>
+                <FormControl maxW={{ base: "full", md: "180px" }}>
+                  <FormLabel fontSize="sm" mb={1} fontWeight="semibold">
+                    Tanggal Masuk Dari
+                  </FormLabel>
+                  <Input
+                    type="date"
+                    bg="terang"
+                    value={filterTanggalFrom}
+                    onChange={(e) => {
+                      setPage(0);
+                      setFilterTanggalFrom(e.target.value);
+                    }}
+                  />
+                </FormControl>
+                <FormControl maxW={{ base: "full", md: "180px" }}>
+                  <FormLabel fontSize="sm" mb={1} fontWeight="semibold">
+                    Tanggal Masuk Sampai
+                  </FormLabel>
+                  <Input
+                    type="date"
+                    bg="terang"
+                    value={filterTanggalTo}
+                    onChange={(e) => {
+                      setPage(0);
+                      setFilterTanggalTo(e.target.value);
+                    }}
+                  />
+                </FormControl>
+                <FormControl maxW={{ base: "full", md: "260px" }}>
+                  <FormLabel fontSize="sm" mb={1} fontWeight="semibold">
+                    Cari
+                  </FormLabel>
+                  <Input
+                    bg="terang"
+                    placeholder="Nama, kode, atau unit kerja"
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") terapkanPencarian();
+                    }}
+                  />
+                </FormControl>
+                <Button onClick={terapkanPencarian} variant="outline">
+                  Cari
+                </Button>
+                <FormControl maxW={{ base: "full", md: "160px" }}>
+                  <FormLabel fontSize="sm" mb={1} fontWeight="semibold">
+                    Per halaman
+                  </FormLabel>
+                  <Select2
+                    options={[10, 20, 50, 100].map((jumlah) => ({
+                      value: jumlah,
+                      label: String(jumlah),
+                    }))}
+                    value={{ value: pageLimit, label: String(pageLimit) }}
+                    onChange={(selectedOption) => {
+                      setPage(0);
+                      setPageLimit(selectedOption?.value || 10);
+                    }}
+                    components={{
+                      DropdownIndicator: () => null,
+                      IndicatorSeparator: () => null,
+                    }}
+                    chakraStyles={{
+                      container: (provided) => ({
+                        ...provided,
+                        borderRadius: "6px",
+                      }),
+                      control: (provided) => ({
+                        ...provided,
+                        backgroundColor: "terang",
+                        border: "0px",
+                        minHeight: "42px",
                       }),
                       option: (provided, state) => ({
                         ...provided,
@@ -1002,6 +1137,7 @@ function LaporanPersediaanKeluar(props) {
                   {showUnitKerjaColumn && <Th minW="140px">Unit Kerja</Th>}
                   <Th minW="130px" isNumeric>Harga Satuan</Th>
                   <Th minW="90px" textAlign="center">Stok Awal</Th>
+                  <Th minW="120px">Tanggal Masuk</Th>
                   <Th minW="110px">Tanggal</Th>
                   <Th minW="160px">Tujuan</Th>
                   <Th minW="100px" isNumeric>Jumlah Keluar</Th>
@@ -1015,10 +1151,10 @@ function LaporanPersediaanKeluar(props) {
                 </Tr>
               </Thead>
               <Tbody>
-                {grouped && grouped.length > 0 ? (
-                  grouped.flatMap((group) => {
+                {pagedGroups.length > 0 ? (
+                  pagedGroups.flatMap((group, groupIndex) => {
                     const rowCount = group.rows.length;
-                    const currentGroupNo = ++groupNumber;
+                    const currentGroupNo = safePage * pageLimit + groupIndex + 1;
                     const groupBg = getGroupBg(currentGroupNo - 1);
                     const cellProps = {
                       rowSpan: rowCount,
@@ -1063,6 +1199,11 @@ function LaporanPersediaanKeluar(props) {
                         {group.stokAwal}
                       </Td>
                     );
+                    const tanggalMasukCell = (
+                      <Td {...cellProps} whiteSpace="nowrap">
+                        {formatTanggal(group.tanggalMasuk)}
+                      </Td>
+                    );
                     const tambahCell = showAksiKeluar ? (
                       <Td {...cellProps} textAlign="center">
                         <Button
@@ -1093,6 +1234,7 @@ function LaporanPersediaanKeluar(props) {
                           </Td>
                         )}
                         {idx === 0 && stokAwalCell}
+                        {idx === 0 && tanggalMasukCell}
                         <Td bg={groupBg} verticalAlign="middle" whiteSpace="nowrap">
                           {row.tanggal ? formatTanggal(row.tanggal) : "-"}
                         </Td>
@@ -1120,6 +1262,30 @@ function LaporanPersediaanKeluar(props) {
               </Tbody>
             </Table>
             </Box>
+            <Flex mt={4} align="center" justify="space-between" wrap="wrap" gap={3}>
+              <Text fontSize="sm" color="gray.500">
+                {filteredGroups.length} data
+              </Text>
+              {totalPage > 1 && (
+                <ReactPaginate
+                  previousLabel={"‹"}
+                  nextLabel={"›"}
+                  pageCount={totalPage}
+                  forcePage={safePage}
+                  onPageChange={({ selected }) => setPage(selected)}
+                  activeClassName={"item active "}
+                  breakClassName={"item break-me "}
+                  breakLabel={"..."}
+                  containerClassName={"pagination"}
+                  disabledClassName={"disabled-page"}
+                  marginPagesDisplayed={1}
+                  nextClassName={"item next "}
+                  pageClassName={"item pagination-page "}
+                  pageRangeDisplayed={2}
+                  previousClassName={"item previous"}
+                />
+              )}
+            </Flex>
           </Box>
         </Container>
 

@@ -103,6 +103,9 @@ function DetailLaporan(props) {
 
   const [DataPersediaan, setDataPersediaan] = useState([]);
   const [page, setPage] = useState(0);
+  const [totalPage, setTotalPage] = useState(0);
+  const [totalRows, setTotalRows] = useState(0);
+  const [pageLimit, setPageLimit] = useState(10);
 
   const toast = useToast();
   const { colorMode, toggleColorMode } = useColorMode();
@@ -126,6 +129,11 @@ function DetailLaporan(props) {
   const pengeluaranSearchTimerRef = useRef(null);
   const PENGELUARAN_SEARCH_DEBOUNCE_MS = 500;
   const [filterUnitKerjaId, setFilterUnitKerjaId] = useState(null);
+  const [filterSumberDanaId, setFilterSumberDanaId] = useState(null);
+  const [filterTanggalFrom, setFilterTanggalFrom] = useState("");
+  const [filterTanggalTo, setFilterTanggalTo] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
   const [dataUnitKerja, setDataUnitKerja] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(Foto);
@@ -460,10 +468,18 @@ function DetailLaporan(props) {
     const id = unitKerjaIdParam ?? filterUnitKerjaId;
     if (!id) return;
 
-    const baseUrl = `${
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(pageLimit));
+    if (id !== FILTER_ALL) params.set("unitKerjaId", id);
+    if (filterSumberDanaId) params.set("sumberDanaId", filterSumberDanaId);
+    if (appliedKeyword) params.set("q", appliedKeyword);
+    if (filterTanggalFrom) params.set("tanggalFrom", filterTanggalFrom);
+    if (filterTanggalTo) params.set("tanggalTo", filterTanggalTo);
+
+    const url = `${
       import.meta.env.VITE_REACT_APP_API_BASE_URL
-    }/laporan-persediaan/get/detail/${props.match.params.id}`;
-    const url = id === FILTER_ALL ? baseUrl : `${baseUrl}?unitKerjaId=${id}`;
+    }/laporan-persediaan/get/detail/${props.match.params.id}?${params.toString()}`;
 
     await axios
       .get(url)
@@ -472,8 +488,8 @@ function DetailLaporan(props) {
         setDataSumberDana(res.data.resultSumberDana);
         setDataSuratPesanan(res.data.resultSuratPesanan);
         setDataSatuan(res.data.resultSatuan);
-
-        console.log(res.data);
+        setTotalPage(res.data.totalPage || 0);
+        setTotalRows(res.data.totalRows || 0);
       })
       .catch((err) => {
         console.error(err);
@@ -556,7 +572,24 @@ function DetailLaporan(props) {
     if (filterUnitKerjaId) {
       fetchPersediaanMasuk(filterUnitKerjaId);
     }
-  }, [page, filterUnitKerjaId]);
+  }, [
+    page,
+    filterUnitKerjaId,
+    filterSumberDanaId,
+    appliedKeyword,
+    filterTanggalFrom,
+    filterTanggalTo,
+    pageLimit,
+  ]);
+
+  const changePage = ({ selected }) => {
+    setPage(selected);
+  };
+
+  const terapkanPencarian = () => {
+    setPage(0);
+    setAppliedKeyword(keyword.trim());
+  };
 
   const unitKerjaFilterOptions = [
     { value: FILTER_ALL, label: "Semua Unit Kerja" },
@@ -581,13 +614,13 @@ function DetailLaporan(props) {
             borderRadius={"5px"}
             bg={colorMode === "dark" ? "gray.800" : "white"}
           >
-            <HStack gap={5} mb={"30px"} align="flex-end">
+            <Flex gap={4} mb={"30px"} align="flex-end" wrap="wrap">
               <Button onClick={onTambahOpen} variant={"primary"} px={"50px"}>
                 Tambah +
               </Button>
 
-              <FormControl maxW="320px">
-                <FormLabel fontSize="sm">Filter Unit Kerja</FormLabel>
+              <FormControl maxW="240px">
+                <FormLabel fontSize="sm">Unit Kerja</FormLabel>
                 <Select2
                   options={unitKerjaFilterOptions}
                   placeholder="Pilih unit kerja"
@@ -599,6 +632,7 @@ function DetailLaporan(props) {
                       : null
                   }
                   onChange={(selectedOption) => {
+                    setPage(0);
                     setFilterUnitKerjaId(selectedOption?.value || null);
                   }}
                   components={{
@@ -625,8 +659,130 @@ function DetailLaporan(props) {
                 />
               </FormControl>
 
+              <FormControl maxW="220px">
+                <FormLabel fontSize="sm">Sumber Dana</FormLabel>
+                <Select2
+                  isClearable
+                  options={
+                    dataSumberDana?.map((val) => ({
+                      value: val.id,
+                      label: val.sumber,
+                    })) || []
+                  }
+                  placeholder="Semua sumber dana"
+                  value={
+                    dataSumberDana
+                      ?.map((val) => ({
+                        value: val.id,
+                        label: val.sumber,
+                      }))
+                      .find((opt) => opt.value === filterSumberDanaId) || null
+                  }
+                  onChange={(selectedOption) => {
+                    setPage(0);
+                    setFilterSumberDanaId(selectedOption?.value || null);
+                  }}
+                  components={{
+                    DropdownIndicator: () => null,
+                    IndicatorSeparator: () => null,
+                  }}
+                  chakraStyles={{
+                    container: (provided) => ({
+                      ...provided,
+                      borderRadius: "6px",
+                    }),
+                    control: (provided) => ({
+                      ...provided,
+                      backgroundColor: "terang",
+                      border: "0px",
+                      minHeight: "40px",
+                    }),
+                    option: (provided, state) => ({
+                      ...provided,
+                      bg: state.isFocused ? "aset" : "white",
+                      color: state.isFocused ? "white" : "black",
+                    }),
+                  }}
+                />
+              </FormControl>
+
+              <FormControl maxW="170px">
+                <FormLabel fontSize="sm">Tanggal Dari</FormLabel>
+                <Input
+                  type="date"
+                  bg="terang"
+                  value={filterTanggalFrom}
+                  onChange={(e) => {
+                    setPage(0);
+                    setFilterTanggalFrom(e.target.value);
+                  }}
+                />
+              </FormControl>
+              <FormControl maxW="170px">
+                <FormLabel fontSize="sm">Tanggal Sampai</FormLabel>
+                <Input
+                  type="date"
+                  bg="terang"
+                  value={filterTanggalTo}
+                  onChange={(e) => {
+                    setPage(0);
+                    setFilterTanggalTo(e.target.value);
+                  }}
+                />
+              </FormControl>
+              <FormControl maxW="280px">
+                <FormLabel fontSize="sm">Cari</FormLabel>
+                <Input
+                  bg="terang"
+                  placeholder="Nama, spesifikasi, NUSP, nomor surat"
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") terapkanPencarian();
+                  }}
+                />
+              </FormControl>
+              <Button onClick={terapkanPencarian} variant="outline">
+                Cari
+              </Button>
+              <FormControl maxW="140px">
+                <FormLabel fontSize="sm">Per halaman</FormLabel>
+                <Select2
+                  options={[10, 20, 50, 100].map((jumlah) => ({
+                    value: jumlah,
+                    label: String(jumlah),
+                  }))}
+                  value={{ value: pageLimit, label: String(pageLimit) }}
+                  onChange={(selectedOption) => {
+                    setPage(0);
+                    setPageLimit(selectedOption?.value || 10);
+                  }}
+                  components={{
+                    DropdownIndicator: () => null,
+                    IndicatorSeparator: () => null,
+                  }}
+                  chakraStyles={{
+                    container: (provided) => ({
+                      ...provided,
+                      borderRadius: "6px",
+                    }),
+                    control: (provided) => ({
+                      ...provided,
+                      backgroundColor: "terang",
+                      border: "0px",
+                      minHeight: "40px",
+                    }),
+                    option: (provided, state) => ({
+                      ...provided,
+                      bg: state.isFocused ? "aset" : "white",
+                      color: state.isFocused ? "white" : "black",
+                    }),
+                  }}
+                />
+              </FormControl>
+
               <Spacer />
-            </HStack>
+            </Flex>
             <Table variant={"aset"}>
               <Thead>
                 <Tr>
@@ -648,10 +804,17 @@ function DetailLaporan(props) {
                 </Tr>
               </Thead>
               <Tbody>
-                {getStokMasuks().map((item, index) => (
+                {getStokMasuks().length === 0 ? (
+                  <Tr>
+                    <Td colSpan={16} textAlign="center" py={8} color="gray.500">
+                      Data tidak ditemukan
+                    </Td>
+                  </Tr>
+                ) : (
+                  getStokMasuks().map((item, index) => (
                   <Tr key={item.id}>
                     {" "}
-                    <Td>{index + 1}</Td>{" "}
+                    <Td>{page * pageLimit + index + 1}</Td>{" "}
                     <Td>
                       {formatNomorSurat(
                         item?.suratPesanan?.nomor,
@@ -760,9 +923,34 @@ function DetailLaporan(props) {
                       </Flex>
                     </Td>
                   </Tr>
-                ))}
+                ))
+                )}
               </Tbody>
             </Table>
+            <Flex mt={4} align="center" justify="space-between" wrap="wrap" gap={3}>
+              <Text fontSize="sm" color="gray.500">
+                {totalRows} data
+              </Text>
+              {totalPage > 1 && (
+                <ReactPaginate
+                  previousLabel={"‹"}
+                  nextLabel={"›"}
+                  pageCount={totalPage}
+                  forcePage={page}
+                  onPageChange={changePage}
+                  activeClassName={"item active "}
+                  breakClassName={"item break-me "}
+                  breakLabel={"..."}
+                  containerClassName={"pagination"}
+                  disabledClassName={"disabled-page"}
+                  marginPagesDisplayed={1}
+                  nextClassName={"item next "}
+                  pageClassName={"item pagination-page "}
+                  pageRangeDisplayed={2}
+                  previousClassName={"item previous"}
+                />
+              )}
+            </Flex>
           </Box>
         </Container>
 

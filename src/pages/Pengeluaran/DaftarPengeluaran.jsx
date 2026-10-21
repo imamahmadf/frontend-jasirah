@@ -9,6 +9,56 @@ import ReactPaginate from "react-paginate";
 import "../../Style/pagination.css";
 import { useHistory, useLocation } from "react-router-dom";
 import { formatRupiah, parseRupiah } from "../../utils/formatRupiah";
+
+const hitungDiskonPengeluaran = (item) => {
+  const hargaAsli = Number(item?.nominal || 0);
+  const tipe = item?.tipeDiskon;
+  const nilai = Number(item?.nilaiDiskon || 0);
+  if (!tipe || nilai <= 0) {
+    return {
+      hargaAsli,
+      potongan: 0,
+      hargaSetelahDiskon: hargaAsli,
+      adaDiskon: false,
+      labelDiskon: "-",
+    };
+  }
+  const potonganMentah =
+    tipe === "persen" ? Math.round((hargaAsli * nilai) / 100) : Math.round(nilai);
+  const potongan = Math.min(Math.max(potonganMentah, 0), hargaAsli);
+  const nilaiTampil = Number.isInteger(nilai) ? String(nilai) : String(nilai);
+  return {
+    hargaAsli,
+    potongan,
+    hargaSetelahDiskon: hargaAsli - potongan,
+    adaDiskon: potongan > 0,
+    labelDiskon:
+      tipe === "persen"
+        ? `${nilaiTampil}%`
+        : `Rp ${Math.round(nilai).toLocaleString("id-ID")}`,
+  };
+};
+
+const InfoNominalPengeluaran = ({ item, align = "right" }) => {
+  const info = hitungDiskonPengeluaran(item);
+  return (
+    <Box textAlign={align}>
+      <Text fontWeight="bold" color="green.600">
+        {formatRupiah(info.hargaSetelahDiskon)}
+      </Text>
+      {info.adaDiskon && (
+        <>
+          <Text fontSize="xs" color="gray.500">
+            Harga asli {formatRupiah(info.hargaAsli)}
+          </Text>
+          <Text fontSize="xs" color="orange.500">
+            Diskon {info.labelDiskon} ({formatRupiah(info.potongan)})
+          </Text>
+        </>
+      )}
+    </Box>
+  );
+};
 import { BsFileEarmarkExcel } from "react-icons/bs";
 import Foto from "../../assets/add_photo.png";
 import {
@@ -715,9 +765,7 @@ function DaftarPengeluaran() {
           <Box px={4} py={3}>
             <Flex justify="space-between" align="flex-start" gap={3} mb={2}>
               <Box flex={1} minW={0}>
-                <Text fontSize="lg" fontWeight="bold" color="green.600">
-                  {formatRupiah(item?.nominal)}
-                </Text>
+                <InfoNominalPengeluaran item={item} align="left" />
                 <Text fontSize="sm" color="gray.600" mt={1} noOfLines={2}>
                   {item?.deskripsi || "-"}
                 </Text>
@@ -1533,12 +1581,7 @@ function DaftarPengeluaran() {
                             </Badge>
                           </Td>
                           <Td isNumeric>
-                            <Text fontWeight="bold" color="green.600">
-                              Rp{" "}
-                              {Number(item?.nominal || 0).toLocaleString(
-                                "id-ID",
-                              )}
-                            </Text>
+                            <InfoNominalPengeluaran item={item} />
                           </Td>
                           <Td>
                             {item?.foto ? (
@@ -2674,12 +2717,7 @@ function DaftarPengeluaran() {
                 <Text fontSize="sm" color="gray.500">
                   Nominal
                 </Text>
-                <Text fontWeight="semibold" color="green.600">
-                  Rp{" "}
-                  {Number(pengeluaranToDelete.nominal || 0).toLocaleString(
-                    "id-ID",
-                  )}
-                </Text>
+                <InfoNominalPengeluaran item={pengeluaranToDelete} align="left" />
               </Box>
             )}
           </ModalBody>
